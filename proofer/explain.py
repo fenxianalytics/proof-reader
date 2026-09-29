@@ -83,8 +83,7 @@ def explain(f: Finding, cfg: Config) -> str:
     if key == ("color", "color_shift"):
         de = d.get("delta_e", 0.0)
         return (f"Edge shapes overlap ≥90% (same artwork, not a different element), but colour changed by ΔE {de:.1f} "
-                 f"(CIE76) — past the {cfg.delta_e} ΔE change threshold (cfg.delta_e); {de:.1f} ≥ 10 is rated major, "
-                 f"below that minor.")
+                 f"(CIE76) — past the {cfg.delta_e} ΔE change threshold (cfg.delta_e).")
     if key == ("color", "colorant_changed"):
         de = d.get("delta_e", 0.0)
         return (f"The PDF's own {d.get('channel', 'fill')} colour value for this shape differs between reference and "
@@ -108,9 +107,9 @@ def explain(f: Finding, cfg: Config) -> str:
         return "Ink pixel count in the reference region is ≤10% of the sample's here — treated as a new element rather than a recolour."
     if key == ("graphic", "changed"):
         area = d.get("area_mm2", 0.0)
-        ocr_note = (f" OCR read \"{d.get('ocr_a', '')}\" (reference) vs \"{d.get('ocr_b', '')}\" (sample) in this region; a differing digit or unit makes it critical, any other differing wording at least major." if "ocr_a" in d else "")
+        ocr_note = (f" OCR read \"{d.get('ocr_a', '')}\" (reference) vs \"{d.get('ocr_b', '')}\" (sample) in this region." if "ocr_a" in d else "")
         return ocr_note + (f"Neither the edge-shape check (recolour) nor the ink-ratio check (add/remove) matched, so this is a "
-                 f"general visual change over {area:.1f} mm² (rated minor below 2.0 mm², major at or above).")
+                 f"general visual change over {area:.1f} mm².")
     if key == ("structure", "page_count"):
         return "Reference and sample have a different number of pages; only the pages both files have were compared."
     if key == ("structure", "page_size"):
@@ -129,11 +128,10 @@ def explain(f: Finding, cfg: Config) -> str:
         return "These fonts appear in the sample's font list without an embedded font program; whoever opens or prints the file substitutes their own, which can reflow or change glyphs."
     if key == ("structure", "image_resolution"):
         return (f"Effective resolution = image pixels / placed width in inches. Reference {d.get('ppi_a', 0):.0f} ppi vs sample {d.get('ppi_b', 0):.0f} ppi; "
-                f"flagged when the sample falls below {cfg.image_ppi_drop:.0%} of the reference and under 300 ppi (major under 150 ppi).")
+                f"flagged when the sample falls below {cfg.image_ppi_drop:.0%} of the reference and under 300 ppi.")
     if key == ("copydeck", "text_changed"):
         return ("The approved paragraph was located on the artwork wherever it sits (order, panels and line breaks don't matter), "
-                "then compared word by word" + (" - character by character on image-only artwork, read by OCR, where spacing is ignored." if f.confidence == "medium" else ".")
-                + " Digits and units make it critical.")
+                "then compared word by word" + (" - character by character on image-only artwork, read by OCR, where spacing is ignored." if f.confidence == "medium" else "."))
     if key == ("copydeck", "missing"):
         return f"No place on the artwork matches this approved paragraph closely enough (best match {d.get('best_score', 0):.0%}, 50% needed to count as the same paragraph with edits)."
     if key == ("copydeck", "not_in_deck"):

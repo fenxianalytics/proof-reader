@@ -245,14 +245,14 @@ textarea { resize: vertical; min-height: 60px; }
 .stage svg.marks { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .mk { cursor: pointer; }
 .mk rect.box { fill: transparent; stroke-width: 1.6; vector-effect: non-scaling-stroke; }
-.mk.critical rect.box { stroke: var(--critical); } .mk.major rect.box { stroke: var(--major); } .mk.minor rect.box { stroke: var(--minor); }
+.mk rect.box { stroke: var(--accent); }
 .mk:hover rect.box { fill: rgba(123,92,245,.14); }
 .mk.sel rect.box { stroke-width: 3; fill: rgba(123,92,245,.16); }
 .mk.sel rect.glow { animation: pulse 1.4s ease-out infinite; }
 .mk rect.glow { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0; vector-effect: non-scaling-stroke; }
 .mk.dim { opacity: .35; }
 .mk .lbl rect { rx: 3; }
-.mk.critical .lbl rect { fill: var(--critical); } .mk.major .lbl rect { fill: var(--major); } .mk.minor .lbl rect { fill: var(--minor); }
+.mk .lbl rect { fill: var(--accent); }
 .mk .lbl text { fill: #fff; font: 700 10px var(--font-head); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 @keyframes pulse { 0% { opacity: .9; } 100% { opacity: 0; transform: scale(1.0); stroke-width: 10; } }
 .swipe-handle { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--accent); z-index: 5; cursor: ew-resize; box-shadow: 0 0 0 1px rgba(255,255,255,.6); }
@@ -275,14 +275,12 @@ kbd { font: 600 10.5px var(--font-mono); border: 1px solid var(--border-strong);
 .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
 .search input { padding-left: 32px; height: 34px; }
 .flist { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-.find { border: 1px solid var(--border); border-left: 4px solid var(--info); border-radius: 11px; background: var(--bg-card); padding: 11px 12px; cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s; }
-.find.critical { border-left-color: var(--critical); } .find.major { border-left-color: var(--major); } .find.minor { border-left-color: var(--minor); }
+.find { border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 11px; background: var(--bg-card); padding: 11px 12px; cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s; }
 .find:hover { box-shadow: var(--shadow); }
 .find.sel { border-color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-soft); }
 .find.done { opacity: .72; }
 .find .top { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-.find .num { font: 700 12px var(--font-head); min-width: 24px; height: 22px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 6px; color: #fff; background: var(--info); }
-.find.critical .num { background: var(--critical); } .find.major .num { background: var(--major); } .find.minor .num { background: var(--minor); }
+.find .num { font: 700 12px var(--font-head); min-width: 24px; height: 22px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 6px; color: #fff; background: var(--accent); }
 .find .msg { margin: 7px 0 0; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
 .conf { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); }
 .conf i { width: 6px; height: 6px; border-radius: 50%; background: var(--good); } .conf.medium i { background: var(--major); }

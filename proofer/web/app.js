@@ -50,7 +50,7 @@ const ICONS = {
 const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 const SEV = ['critical', 'major', 'minor', 'info'];
 const SEV_LABEL = { critical: 'Critical', major: 'Major', minor: 'Minor', info: 'Note' };
-const VERDICT_TEXT = { FAIL: ['Do not approve', 'Major or critical differences found'], REVIEW: ['Needs review', 'A person should look before this goes further'], PASS: ['No differences found', 'Within tolerance on every check that ran'] };
+const VERDICT_TEXT = { FAIL: ['Do not approve', 'Differences found'], REVIEW: ['Needs review', 'A person should look before this goes further'], PASS: ['No differences found', 'Within tolerance on every check that ran'] };
 const VERDICT_ICON = { FAIL: 'xcircle', REVIEW: 'alert', PASS: 'shield' };
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
@@ -187,12 +187,12 @@ async function viewNew() {
     </div>
     <div class="cta"><button class="btn primary" id="go" disabled>${icon('zap')} Run proof</button></div>
     <div class="examples card" style="padding:20px"><h3>No files handy? Try a built-in example</h3>
-      <div class="sub">Synthetic pack designs with known, injected defects (and control pairs that must come back clean).</div>
+      <div class="sub">Fictional packs with known, injected errors: several at once, extreme stress tests, and other languages. Clean control pairs must come back with no findings.</div>
       <div class="ex-grid"><select id="ex"><option>Loading examples…</option></select><button class="btn" id="exgo" disabled>Run example</button></div>
       <label class="toggle" style="margin-top:12px"><input type="checkbox" id="exdeck" checked><span class="sub">Also check against the design's approved text document</span></label></div>
     <div class="caps">${['Text', 'Approved text', 'Spelling', 'Barcodes', 'Braille', 'Vector colour', 'Layers', 'Layout', 'Page structure', 'Image-only artwork (OCR)'].map((c) => `<span class="chip">${icon('check')} ${c}</span>`).join('')}</div>
     <div class="trust">
-      <div class="glass"><b>${icon('eye')} Nothing is hidden</b><p>Every proof lists which checks ran and which could not, per page. A clean result on limited coverage is labelled as such.</p></div>
+      <div class="glass"><b>${icon('eye')} Nothing is hidden</b><p>Every proof lists which checks ran and which could not, per page.</p></div>
       <div class="glass"><b>${icon('shield')} Text is read, not guessed</b><p>Words come straight from the PDF. OCR only describes regions the pixel check already flagged, and never overrules it.</p></div>
       <div class="glass"><b>${icon('pen')} Sign-off with an audit trail</b><p>Accept or reject each finding, then sign off. Decisions are logged in a tamper-evident chain with file hashes.</p></div>
     </div></div>`;
@@ -382,7 +382,7 @@ async function viewBatch(id) {
     const pct = b.total ? Math.round(100 * (b.done + b.failed) / b.total) : 100;
     const rank = (r) => r.state !== 'done' ? 9 : ({ FAIL: 0, REVIEW: 1, PASS: 2 }[r.verdict] ?? 3) * 1000 - ((r.counts || {}).critical || 0);
     const rows = [...b.rows].sort((x, y) => sortKey === 'sev' ? rank(x) - rank(y) : x.key.localeCompare(y.key));
-    const vb = (r) => r.state === 'done' ? `<span class="badge ${r.verdict === 'PASS' ? 'good' : r.verdict === 'FAIL' ? 'critical' : 'major'}">${r.verdict}</span>${r.coverage_limited ? ' <span class="badge muted">limited</span>' : ''}`
+    const vb = (r) => r.state === 'done' ? `<span class="badge ${r.verdict === 'PASS' ? 'good' : r.verdict === 'FAIL' ? 'critical' : 'major'}">${r.verdict}</span>`
       : r.state === 'error' ? `<span class="badge critical">error</span>` : `<span class="badge muted">${r.state === 'queued' ? 'queued' : Math.round((r.progress || 0) * 100) + '%'}</span>`;
     view.innerHTML = `<div class="page">
       <div class="ph"><div><div class="row"><a class="btn ghost icon" href="#/history">${icon('right').replace('<svg', '<svg style="transform:rotate(180deg)"')}</a><h1>${esc(b.name)}</h1></div>
@@ -394,14 +394,14 @@ async function viewBatch(id) {
         <div class="card kpi critical"><div class="n">${b.verdicts.FAIL}</div><div class="l">Do not approve</div></div>
         <div class="card kpi major"><div class="n">${b.verdicts.REVIEW}</div><div class="l">Need review</div></div>
         <div class="card kpi"><div class="n" style="color:var(--good)">${b.verdicts.PASS}</div><div class="l">No differences</div></div>
-        <div class="card kpi critical"><div class="n">${b.critical}</div><div class="l">Critical findings in total</div></div></div>
+</div>
       <div class="card" style="margin-top:16px;overflow-x:auto"><div class="row" style="padding:12px 16px"><b>Proofs</b><span class="spacer"></span>
         <div class="seg"><button data-sort="sev" class="${sortKey === 'sev' ? 'on' : ''}">Worst first</button><button data-sort="name" class="${sortKey === 'name' ? 'on' : ''}">By name</button></div></div>
-        <table class="t"><thead><tr><th>Pair</th><th>Files</th><th>Result</th><th title="critical · major · minor">Findings</th><th>Reviewed</th><th>Sign-off</th></tr></thead><tbody>
+        <table class="t"><thead><tr><th>Pair</th><th>Files</th><th>Result</th><th>Findings</th><th>Reviewed</th><th>Sign-off</th></tr></thead><tbody>
         ${rows.map((r) => { const c = r.counts || {};
           return `<tr data-id="${r.id}" data-state="${r.state}"><td><b>${esc(r.key)}</b></td><td><div>${esc(r.names.sample)}</div><div class="sub">vs ${esc(r.names.ref)}${r.names.deck ? ' + ' + esc(r.names.deck) : ''}</div></td>
           <td>${vb(r)}${r.state === 'error' ? `<div class="sub">${esc(r.error || '')}</div>` : ''}</td>
-          <td class="nowrap">${r.state === 'done' ? `<span style="color:var(--critical);font-weight:700">${c.critical || 0}</span> · <span style="color:var(--major);font-weight:700">${c.major || 0}</span> · <span style="color:var(--minor);font-weight:700">${c.minor || 0}</span>` : ''}</td>
+          <td class="nowrap">${r.state === 'done' ? (c.critical || 0) + (c.major || 0) + (c.minor || 0) : ''}</td>
           <td>${r.state === 'done' ? r.reviewed : ''}</td><td>${r.signoff ? `<span class="badge ${r.signoff === 'approved' ? 'good' : 'critical'}">${r.signoff}</span>` : '<span class="muted">-</span>'}</td></tr>`; }).join('')}
         </tbody></table></div>
       ${b.unpaired.length ? `<div class="attn" style="margin:16px 0 0"><b>${icon('info')} Not paired, not proofed</b>${b.unpaired.map((u) => `<div class="it" style="cursor:default">${esc(u)}</div>`).join('')}</div>` : ''}
@@ -483,13 +483,13 @@ async function viewHistory() {
       ${bl.map((b) => `<tr data-batch="${b.id}"><td class="nowrap">${fmtDate(b.created)}</td><td><b>${esc(b.name)}</b></td><td>${b.done + b.failed} / ${b.total}${b.running ? ' <span class="badge muted">running</span>' : ''}</td>
         <td class="nowrap"><span class="badge critical">${b.verdicts.FAIL} fail</span> <span class="badge major">${b.verdicts.REVIEW} review</span> <span class="badge good">${b.verdicts.PASS} pass</span></td></tr>`).join('')}
       </tbody></table></div><h3 style="margin:4px 0 10px">Individual proofs</h3>` : ''}
-    <div class="card" style="overflow-x:auto">${list.length ? `<table class="t"><thead><tr><th>When</th><th>Sample vs reference</th><th>Result</th><th title="critical · major · minor">Findings</th><th>Reviewed</th><th>Sign-off</th><th></th></tr></thead><tbody>
+    <div class="card" style="overflow-x:auto">${list.length ? `<table class="t"><thead><tr><th>When</th><th>Sample vs reference</th><th>Result</th><th>Findings</th><th>Reviewed</th><th>Sign-off</th><th></th></tr></thead><tbody>
     ${list.map((j) => {
       const c = j.counts || {}, n = (c.critical || 0) + (c.major || 0) + (c.minor || 0);
       return `<tr data-id="${j.id}" data-state="${j.state}"><td class="nowrap">${fmtDate(j.created)}</td>
         <td><b>${esc(j.names.sample)}</b><div class="sub">vs ${esc(j.names.ref)}</div></td>
-        <td>${j.state === 'done' ? `<span class="badge ${j.verdict === 'PASS' ? 'good' : j.verdict === 'FAIL' ? 'critical' : 'major'}">${j.verdict}</span>${j.coverage_limited ? ' <span class="badge muted">limited</span>' : ''}` : `<span class="badge muted">${j.state}</span>`}</td>
-        <td class="nowrap">${j.state === 'done' ? `<span style="color:var(--critical);font-weight:700">${c.critical || 0}</span> · <span style="color:var(--major);font-weight:700">${c.major || 0}</span> · <span style="color:var(--minor);font-weight:700">${c.minor || 0}</span>` : ''}</td>
+        <td>${j.state === 'done' ? `<span class="badge ${j.verdict === 'PASS' ? 'good' : j.verdict === 'FAIL' ? 'critical' : 'major'}">${j.verdict}</span>` : `<span class="badge muted">${j.state}</span>`}</td>
+        <td class="nowrap">${j.state === 'done' ? (c.critical || 0) + (c.major || 0) + (c.minor || 0) : ''}</td>
         <td>${j.state === 'done' ? `${j.reviewed} of ${n}` : ''}</td>
         <td>${j.signoff ? `<span class="badge ${j.signoff === 'approved' ? 'good' : 'critical'}">${j.signoff}</span>` : '<span class="muted">-</span>'}</td>
         <td style="text-align:right"><button class="btn ghost icon" data-del="${j.id}" title="Delete this proof and its files">${icon('trash')}</button></td></tr>`;
@@ -602,16 +602,13 @@ function openReport(p, standalone) {
       b.push(`<div class="banner ${ok ? 'ok' : 'bad'}">${icon(ok ? 'shield' : 'xcircle', 'lg')}<div><b>${ok ? 'Approved' : 'Sent back'} by ${esc(R.signoff.reviewer)}</b> on ${fmtDate(R.signoff.ts)}${R.signoff.note ? ' - ' + esc(R.signoff.note) : ''}<div class="sub">Recorded with SHA-256 of both input files in the audit log.</div></div></div>`);
     }
     if (!R.audit.intact) b.push(`<div class="banner bad">${icon('alert', 'lg')}<div><b>The audit log fails its integrity check.</b> An entry was altered, removed or reordered after it was written.</div></div>`);
-    if (limitedPages.length) {
-      b.push(`<div class="banner warn">${icon('info', 'lg')}<div><b>Limited coverage on ${limitedPages.length} of ${p.coverage.length} page${p.coverage.length > 1 ? 's' : ''}.</b> ${p.verdict === 'PASS' ? 'A clean result here means no <i>visual</i> difference was found; ' : ''}text, braille and layers could not be compared where a file has no text layer (image-only or outlined artwork)${p.engine.ocr ? '; changed regions were read with OCR' : ''}. Ask for live-text artwork for a full check. <a href="#" data-goto="coverage">See exactly what ran</a></div></div>`);
-    }
     $('#banners').innerHTML = b.join('');
   }
   function renderKpis() {
     const done = real.filter((f) => decision(f) !== 'pending').length;
     const k = (cls, n, l) => `<div class="card kpi ${cls}"><div class="n">${n}</div><div class="l">${l}</div></div>`;
-    $('#kpis').innerHTML = k('critical', counts.critical, 'Critical') + k('major', counts.major, 'Major') + k('minor', counts.minor, 'Minor')
-      + k('', p.attention.length, 'Need a human eye') + k('', limitedPages.length ? 'Limited' : 'Full', 'Coverage')
+    $('#kpis').innerHTML = k('', real.length, 'Findings')
+      + k('', p.attention.length, 'Need a human eye')
       + `<div class="card kpi"><div class="n">${done}<span class="muted" style="font-size:15px"> / ${real.length}</span></div><div class="l">Findings reviewed</div><div class="bar"><i style="width:${real.length ? (100 * done / real.length) : 100}%"></i></div></div>`;
   }
   view.addEventListener('click', (e) => {
@@ -648,7 +645,7 @@ function openReport(p, standalone) {
       const b = f[key] || (key === 'bbox_b' ? f.bbox_a : f.bbox_b) || f.bbox_a || f.bbox_b;
       const k = b.map((v) => Math.round(v / 3)).join(',');  // findings on the same spot: put labels side by side
       const off = (seen[k] = (seen[k] ?? -1) + 1);
-      return `<g class="mk ${f.severity} ${R.sel === f.id ? 'sel' : ''}" data-id="${f.id}" data-off="${off}" data-b="${b.join(',')}"><rect class="glow"/><rect class="box"/><g class="lbl"><rect/><text>${f.id}</text></g></g>`;
+      return `<g class="mk ${R.sel === f.id ? 'sel' : ''}" data-id="${f.id}" data-off="${off}" data-b="${b.join(',')}"><rect class="glow"/><rect class="box"/><g class="lbl"><rect/><text>${f.id}</text></g></g>`;
     }).join('');
     return `<svg class="marks" viewBox="0 0 ${g.w_pt} ${g.h_pt}" style="${R.showMarks ? '' : 'display:none'}">${rects}</svg>`;
   }
@@ -828,8 +825,8 @@ function openReport(p, standalone) {
     }
     const related = (f.detail && f.detail.related_text || []).map((t) => `<div class="sub" style="margin-top:4px">Also: ${esc(t)}</div>`).join('');
     const canReview = !R.standalone && f.severity !== 'info';
-    return `<div class="find ${f.severity} ${R.sel === f.id ? 'sel' : ''} ${d !== 'pending' ? 'done' : ''}" data-id="${f.id}">
-      <div class="top"><span class="num">${f.id}</span><span class="badge ${f.severity}">${SEV_LABEL[f.severity]}</span><span class="badge muted">${esc(f.category)} · ${esc(f.kind.replace(/_/g, ' '))}</span>
+    return `<div class="find ${R.sel === f.id ? 'sel' : ''} ${d !== 'pending' ? 'done' : ''}" data-id="${f.id}">
+      <div class="top"><span class="num">${f.id}</span><span class="badge muted">${esc(f.category)} · ${esc(f.kind.replace(/_/g, ' '))}</span>
         <span class="spacer"></span><span class="conf ${f.confidence}" title="${f.confidence === 'high' ? 'Read directly from the PDF or decoded' : 'Inferred from rendered pixels or a proxy measurement'}"><i></i>${f.confidence}</span><span class="sub">p${f.page + 1}</span></div>
       <p class="msg">${esc(f.message)}</p>${diff}${related}
       <details class="why"><summary>${icon('right')} Why this was flagged</summary><p>${esc(f.why)}</p></details>
@@ -851,14 +848,14 @@ function openReport(p, standalone) {
     const cnt = (s) => p.findings.filter((f) => f.severity === s).length;
     const list = visibleFindings();
     body.innerHTML = `<div class="filters">
-        <div class="chips">${SEV.filter((s) => cnt(s)).map((s) => `<button class="chip btnlike ${R.filter.sev.has(s) ? 'on' : ''}" data-sev="${s}">${SEV_LABEL[s]} ${cnt(s)}</button>`).join('')}
+        <div class="chips">
           ${pages.length > 1 ? `<button class="chip btnlike ${R.filter.thisPage ? 'on' : ''}" data-thispage>This page</button>` : ''}
           <button class="chip btnlike ${R.group ? 'on' : ''}" data-group title="Group findings by type">Group by type</button></div>
         <div class="row wrap"><div class="search grow">${icon('search')}<input type="text" id="q" placeholder="Search findings" value="${esc(R.filter.q)}"></div>
           <select id="cat" style="width:auto"><option value="">All types</option>${cats.map((c) => `<option ${R.filter.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
           ${R.standalone ? '' : `<select id="stat" style="width:auto"><option value="">Any status</option>${['pending', 'accepted', 'rejected'].map((s) => `<option ${R.filter.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>`}</div></div>
       ${p.attention.length ? `<div class="attn"><b>${icon('eye')} Not differences, but worth a look</b>${p.attention.map((a, i) => `<div class="it" data-att="${i}">${esc(a.message)}</div>`).join('')}</div>` : ''}
-      <div class="flist" id="flist">${list.length ? (R.group ? groupHtml(list) : list.map(findHtml).join('')) : (real.length ? `<div class="empty">No findings match these filters.</div>` : `<div class="empty">${icon('shield')}<div><b>No differences found</b></div><div class="sub">${limitedPages.length ? 'Coverage was limited; see the Coverage tab for what could not run.' : 'Every check that ran came back clean.'}</div></div>`)}</div>`;
+      <div class="flist" id="flist">${list.length ? (R.group ? groupHtml(list) : list.map(findHtml).join('')) : (real.length ? `<div class="empty">No findings match these filters.</div>` : `<div class="empty">${icon('shield')}<div><b>No differences found</b></div><div class="sub">Every check that ran came back clean.</div></div>`)}</div>`;
     if (R.sel) markSelection();
   }
   function groupHtml(list) {
@@ -870,8 +867,8 @@ function openReport(p, standalone) {
       .map((c) => `<div class="grp"><b>${esc(CAT[c] || c)}</b><span class="ct">${by[c].length}</span></div>` + by[c].map(findHtml).join('')).join('');
   }
   function coverageHtml() {
-    return `<div class="cov"><div class="sub">What this proof checked, page by page, and what it could not. A clean result only speaks for the checks that ran.</div>
-      ${p.coverage.map((c) => `<div class="pg"><div class="pgh"><span>Page ${c.page + 1}</span><span class="badge muted">${c.mode}</span>${c.limited ? '<span class="badge major">limited</span>' : '<span class="badge good">full</span>'}</div>
+    return `<div class="cov"><div class="sub">What this proof checked, page by page.</div>
+      ${p.coverage.map((c) => `<div class="pg"><div class="pgh"><span>Page ${c.page + 1}</span><span class="badge muted">${c.mode}</span></div>
         ${c.checks.map((k) => `<div class="chk"><span class="st ${k.status}">${k.status === 'ran' ? icon('check') : ''}</span><b>${esc(k.name)}</b><small>${esc(k.note)}</small></div>`).join('')}</div>`).join('')}
       ${p.warnings.map((w) => `<div class="attn">${esc(w)}</div>`).join('')}</div>`;
   }
@@ -936,7 +933,6 @@ function openReport(p, standalone) {
     modal(`<h2>Sign off this proof</h2><div class="sub">Your decision is written to the audit log with the SHA-256 of both input files.</div>
       <div class="field"><label class="l">Reviewer name</label><input type="text" id="so-name" value="${esc(R.reviewer)}" placeholder="Full name"></div>
       <div class="field"><label class="l">Note (optional)</label><textarea id="so-note" placeholder="Anything the next person should know"></textarea></div>
-      ${p.coverage_limited ? `<label class="toggle field" style="align-items:flex-start"><input type="checkbox" id="so-ack" style="flex:none;margin-top:2px"><span>I understand coverage was limited on ${limitedPages.length} page${limitedPages.length > 1 ? 's' : ''} (image-only artwork), so text, braille and layers were not compared there.</span></label>` : ''}
       ${blockers.length ? `<div class="blockers"><b>To approve:</b><ul>${blockers.map((b) => `<li>${b}</li>`).join('')}</ul></div>` : ''}
       <div class="foot"><button class="btn" data-close>Cancel</button><button class="btn bad" id="so-rej">Send back</button><button class="btn good" id="so-ok" ${undecided || rejected ? 'disabled' : ''}>${icon('check')} Approve</button></div>`,
     (box, close) => {

@@ -28,6 +28,7 @@ from proofer.report import findings_csv, render_standalone
 ROOT = Path(__file__).parent
 WEB = ROOT / "proofer" / "web"
 SAMPLES_DIR = ROOT / "samples"
+EXAMPLES_DIR = ROOT / "examples"
 RESULTS_DIR = ROOT / "results"
 MAX_UPLOAD = 200 * 1024 * 1024
 
@@ -44,8 +45,16 @@ def _job(job_id: str) -> str:
 
 
 def _load_pairs() -> list[dict]:
+    """Built-in examples: the committed examples/ folder (showcase, extreme, languages) plus, when present locally,
+    the generated samples/ set."""
+    out = []
+    p = EXAMPLES_DIR / "index.json"
+    if p.exists():
+        out += json.loads(p.read_text(encoding="utf-8"))["pairs"]
     p = SAMPLES_DIR / "answer_key.json"
-    return json.loads(p.read_text(encoding="utf-8"))["pairs"] if p.exists() else []
+    if p.exists():
+        out += json.loads(p.read_text(encoding="utf-8"))["pairs"]
+    return out
 
 
 async def _pdf(up: UploadFile, label: str) -> bytes:
@@ -164,11 +173,11 @@ def export_batch(bid: str, fmt: str) -> Response:
     stem = _safe(b["name"])
     summary = io.StringIO()
     w = csv.writer(summary)
-    w.writerow(["pair", "sample", "reference", "approved_text", "verdict", "critical", "major", "minor", "coverage_limited", "reviewed", "signoff"])
+    w.writerow(["pair", "sample", "reference", "approved_text", "verdict", "findings", "reviewed", "signoff"])
     for r in b["rows"]:
         c = r.get("counts") or {}
         w.writerow([r["key"], r["names"]["sample"], r["names"]["ref"], r["names"].get("deck", ""), r.get("verdict", r["state"]),
-                    c.get("critical", ""), c.get("major", ""), c.get("minor", ""), r.get("coverage_limited", ""), r["reviewed"], r.get("signoff") or ""])
+                    sum(c.get(k, 0) for k in ("critical", "major", "minor")) if c else "", r["reviewed"], r.get("signoff") or ""])
     if fmt == "csv":
         allf = io.StringIO()
         fw = csv.writer(allf)
@@ -200,6 +209,12 @@ def create_sample_job(req: SampleReq) -> dict:
     rec = next((p for p in _load_pairs() if p["name"] == req.pair), None)
     if rec is None:
         raise HTTPException(404, "Unknown example")
+    if rec.get("base") == "examples":
+        ref, smp = EXAMPLES_DIR / rec["a"], EXAMPLES_DIR / rec["b"]
+        deck = EXAMPLES_DIR / rec["deck"] if rec.get("deck") else None
+        use = req.with_deck and deck is not None and deck.exists()
+        return dict(id=jobs.create(ref.read_bytes(), smp.read_bytes(), "reference.pdf", "sample.pdf",
+                                   deck=deck.read_bytes() if use else None, deck_name="approved_text.docx" if use else ""))
     ref, smp = SAMPLES_DIR / rec["a"], SAMPLES_DIR / rec["b"]
     deck = SAMPLES_DIR / "decks" / f"{rec.get('design', 'syrup')}.docx"
     use = req.with_deck and deck.exists()

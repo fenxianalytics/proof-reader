@@ -13,7 +13,7 @@ import pymupdf
 
 from .imaging import open_pdf
 
-COL = {"critical": (0.9, 0.16, 0.11), "major": (0.88, 0.48, 0.0), "minor": (0.72, 0.53, 0.04), "info": (0.48, 0.48, 0.53)}
+COL = {"critical": (0.9, 0.16, 0.11), "major": (0.88, 0.48, 0.0), "minor": (0.72, 0.53, 0.04), "info": (0.48, 0.48, 0.53), "mark": (0.48, 0.36, 0.96)}
 
 
 def _inv_map(H, r):
@@ -51,7 +51,7 @@ def build(sample_pdf: str, payload: dict) -> bytes:
             continue
         rv = reviews.get(str(f["id"]), {})
         a = page.add_rect_annot(r)
-        a.set_colors(stroke=COL[f["severity"]])
+        a.set_colors(stroke=COL["mark"])
         a.set_border(width=1.4)
         a.set_opacity(0.9)
         status = f" [{rv['decision']}{' by ' + rv['reviewer'] if rv.get('reviewer') else ''}]" if rv.get("decision", "pending") != "pending" else ""
@@ -59,7 +59,7 @@ def build(sample_pdf: str, payload: dict) -> bytes:
                    content=f"{f['message']}\n\nWhy: {f.get('why', '')}" + (f"\n\nReviewer note: {rv['note']}" if rv.get("note") else ""))
         a.update()
         lab = pymupdf.Rect(r.x0, max(0, r.y0 - 9), r.x0 + 6 + 5 * len(str(f["id"])), max(9, r.y0))
-        t = page.add_freetext_annot(lab, str(f["id"]), fontsize=6.5, text_color=(1, 1, 1), fill_color=COL[f["severity"]], align=1)
+        t = page.add_freetext_annot(lab, str(f["id"]), fontsize=6.5, text_color=(1, 1, 1), fill_color=COL["mark"], align=1)
         t.set_info(title=f"#{f['id']}", content=f["message"])
         t.update()
     # summary page at the front
@@ -77,8 +77,7 @@ def build(sample_pdf: str, payload: dict) -> bytes:
     line("Proof report", 20, "hebo", gap=2)
     line(f"Sample: {payload['names']['sample']}    Reference: {payload['names']['ref']}"
          + (f"    Approved text: {payload['names'].get('deck')}" if payload["names"].get("deck") else ""), 8.5, color=(0.35, 0.35, 0.4))
-    line(f"Verdict: {payload['verdict']}    critical {c['critical']} · major {c['major']} · minor {c['minor']}"
-         + ("    (coverage limited on some pages)" if payload.get("coverage_limited") else ""), 12, "hebo",
+    line(f"Verdict: {payload['verdict']}    {c['critical'] + c['major'] + c['minor']} findings", 12, "hebo",
          COL["critical"] if payload["verdict"] == "FAIL" else COL["major"] if payload["verdict"] == "REVIEW" else (0.05, 0.55, 0.35))
     if so:
         line(f"Sign-off: {so['outcome'].upper()} by {so['reviewer']} on {so['ts']}" + (f" - {so['note']}" if so.get("note") else ""), 10, "hebo")

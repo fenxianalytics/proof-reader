@@ -270,7 +270,7 @@ def review(job_id: str, finding: int, decision: str, note: str, reviewer: str) -
 
 
 def sign_off(job_id: str, outcome: str, reviewer: str, note: str, acknowledged_limits: bool) -> dict:
-    """approved: every finding decided, none rejected, and (when coverage was limited) that limit acknowledged.
+    """approved: every finding decided, none rejected.
     rejected: always allowed. A sign-off records who, when, and the SHA-256 of both input files."""
     if outcome not in ("approved", "rejected"):
         raise ValueError("outcome must be approved or rejected")
@@ -285,7 +285,5 @@ def sign_off(job_id: str, outcome: str, reviewer: str, note: str, acknowledged_l
             raise ValueError(f"finding(s) {undecided} have no decision yet")
         if any(rv[str(f["id"])]["decision"] == "rejected" for f in real):
             raise ValueError("a rejected finding means the sample cannot be approved")
-        if p.get("coverage_limited") and not acknowledged_limits:
-            raise ValueError("coverage was limited on some pages; acknowledge that before approving")
     return _append(job_id, dict(type="signoff", outcome=outcome, reviewer=reviewer.strip(), note=note.strip(),
                                 verdict=p.get("verdict"), acknowledged_limits=acknowledged_limits, sha256=(p.get("meta") or {}).get("sha256")))

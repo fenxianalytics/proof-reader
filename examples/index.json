@@ -1,0 +1,753 @@
+{
+ "pairs": [
+  {
+   "name": "showcase/01_syrup_10_defects_live",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "syrup: 10 different defects injected into one live-text file"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/01_syrup_10_defects_live/reference.pdf",
+   "b": "showcase/01_syrup_10_defects_live/sample.pdf",
+   "deck": "showcase/01_syrup_10_defects_live/approved_text.docx"
+  },
+  {
+   "name": "showcase/02_carton_10_defects_live",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "carton: 10 different defects injected into one live-text file"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/02_carton_10_defects_live/reference.pdf",
+   "b": "showcase/02_carton_10_defects_live/sample.pdf",
+   "deck": "showcase/02_carton_10_defects_live/approved_text.docx"
+  },
+  {
+   "name": "showcase/03_vial_10_defects_live",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "vial: 10 different defects injected into one live-text file"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/03_vial_10_defects_live/reference.pdf",
+   "b": "showcase/03_vial_10_defects_live/sample.pdf",
+   "deck": "showcase/03_vial_10_defects_live/approved_text.docx"
+  },
+  {
+   "name": "showcase/04_tube_10_defects_live",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "tube: 10 different defects injected into one live-text file"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/04_tube_10_defects_live/reference.pdf",
+   "b": "showcase/04_tube_10_defects_live/sample.pdf",
+   "deck": "showcase/04_tube_10_defects_live/approved_text.docx"
+  },
+  {
+   "name": "showcase/05_leaflet_10_defects_live",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "leaflet: 10 different defects injected into one live-text file"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/05_leaflet_10_defects_live/reference.pdf",
+   "b": "showcase/05_leaflet_10_defects_live/sample.pdf",
+   "deck": "showcase/05_leaflet_10_defects_live/approved_text.docx"
+  },
+  {
+   "name": "showcase/06_blister_10_defects_live",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "blister: 10 different defects injected into one live-text file"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/06_blister_10_defects_live/reference.pdf",
+   "b": "showcase/06_blister_10_defects_live/sample.pdf",
+   "deck": "showcase/06_blister_10_defects_live/approved_text.docx"
+  },
+  {
+   "name": "showcase/07_syrup_10_defects_flattened",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "syrup: same 10 defects, but the sample was sent flattened (no text layer)"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/07_syrup_10_defects_flattened/reference.pdf",
+   "b": "showcase/07_syrup_10_defects_flattened/sample.pdf",
+   "deck": "showcase/07_syrup_10_defects_flattened/approved_text.docx"
+  },
+  {
+   "name": "showcase/08_carton_10_defects_flattened",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "carton: same 10 defects, but the sample was sent flattened (no text layer)"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/08_carton_10_defects_flattened/reference.pdf",
+   "b": "showcase/08_carton_10_defects_flattened/sample.pdf",
+   "deck": "showcase/08_carton_10_defects_flattened/approved_text.docx"
+  },
+  {
+   "name": "showcase/09_vial_10_defects_flattened",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "vial: same 10 defects, but the sample was sent flattened (no text layer)"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/09_vial_10_defects_flattened/reference.pdf",
+   "b": "showcase/09_vial_10_defects_flattened/sample.pdf",
+   "deck": "showcase/09_vial_10_defects_flattened/approved_text.docx"
+  },
+  {
+   "name": "showcase/10_tube_10_defects_flattened",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "tube: same 10 defects, but the sample was sent flattened (no text layer)"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/10_tube_10_defects_flattened/reference.pdf",
+   "b": "showcase/10_tube_10_defects_flattened/sample.pdf",
+   "deck": "showcase/10_tube_10_defects_flattened/approved_text.docx"
+  },
+  {
+   "name": "showcase/11_leaflet_10_defects_flattened",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "leaflet: same 10 defects, but the sample was sent flattened (no text layer)"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/11_leaflet_10_defects_flattened/reference.pdf",
+   "b": "showcase/11_leaflet_10_defects_flattened/sample.pdf",
+   "deck": "showcase/11_leaflet_10_defects_flattened/approved_text.docx"
+  },
+  {
+   "name": "showcase/12_blister_10_defects_flattened",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "blister: same 10 defects, but the sample was sent flattened (no text layer)"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/12_blister_10_defects_flattened/reference.pdf",
+   "b": "showcase/12_blister_10_defects_flattened/sample.pdf",
+   "deck": "showcase/12_blister_10_defects_flattened/approved_text.docx"
+  },
+  {
+   "name": "showcase/13_kitchen_sink_reimposed",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "syrup: up to 16 defects AND the whole file scaled 99% and shifted 1.2 mm"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/13_kitchen_sink_reimposed/reference.pdf",
+   "b": "showcase/13_kitchen_sink_reimposed/sample.pdf",
+   "deck": "showcase/13_kitchen_sink_reimposed/approved_text.docx"
+  },
+  {
+   "name": "showcase/14_clean_control_carton",
+   "design": "Showcase: several errors at once",
+   "kind": "control",
+   "note": "",
+   "defects": [],
+   "base": "examples",
+   "a": "showcase/14_clean_control_carton/reference.pdf",
+   "b": "showcase/14_clean_control_carton/sample.pdf",
+   "deck": "showcase/14_clean_control_carton/approved_text.docx"
+  },
+  {
+   "name": "showcase/15_spot_colour_and_overprint",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "PANTONE 286 -> 287 and overprint switched on: identical on screen"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/15_spot_colour_and_overprint/reference.pdf",
+   "b": "showcase/15_spot_colour_and_overprint/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "showcase/16_rich_black",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "K-only black rebuilt as rich black: looks the same, prints differently"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/16_rich_black/reference.pdf",
+   "b": "showcase/16_rich_black/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "showcase/17_varnish_layer_off",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Varnish layer switched off"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/17_varnish_layer_off/reference.pdf",
+   "b": "showcase/17_varnish_layer_off/sample.pdf",
+   "deck": "showcase/17_varnish_layer_off/approved_text.docx"
+  },
+  {
+   "name": "showcase/18_braille_error",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "One braille cell wrong"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/18_braille_error/reference.pdf",
+   "b": "showcase/18_braille_error/sample.pdf",
+   "deck": "showcase/18_braille_error/approved_text.docx"
+  },
+  {
+   "name": "showcase/19_barcode_bars_changed",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Barcode bars changed, printed digits unchanged"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/19_barcode_bars_changed/reference.pdf",
+   "b": "showcase/19_barcode_bars_changed/sample.pdf",
+   "deck": "showcase/19_barcode_bars_changed/approved_text.docx"
+  },
+  {
+   "name": "showcase/20_print_run_expiry_only",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Print-run profile: a changed expiry is expected variable data, not a defect"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/20_print_run_expiry_only/reference.pdf",
+   "b": "showcase/20_print_run_expiry_only/sample.pdf",
+   "deck": "showcase/20_print_run_expiry_only/approved_text.docx"
+  },
+  {
+   "name": "showcase/21_lang_en_vs_ru_wrong_language",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Language test: en vs ru wrong language"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/21_lang_en_vs_ru_wrong_language/reference.pdf",
+   "b": "showcase/21_lang_en_vs_ru_wrong_language/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "showcase/22_lang_en_vs_ar_wrong_language",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Language test: en vs ar wrong language"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/22_lang_en_vs_ar_wrong_language/reference.pdf",
+   "b": "showcase/22_lang_en_vs_ar_wrong_language/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "showcase/23_lang_ru_meaning_reversed",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Language test: ru meaning reversed"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/23_lang_ru_meaning_reversed/reference.pdf",
+   "b": "showcase/23_lang_ru_meaning_reversed/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "showcase/24_lang_zh_meaning_reversed",
+   "design": "Showcase: several errors at once",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Language test: zh meaning reversed"
+    }
+   ],
+   "base": "examples",
+   "a": "showcase/24_lang_zh_meaning_reversed/reference.pdf",
+   "b": "showcase/24_lang_zh_meaning_reversed/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "extreme/01_STRESS_leaflet_30_defects",
+   "design": "Extreme: stress tests and limits",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "2-page, ~500-word leaflet with 30 defects at once"
+    }
+   ],
+   "base": "examples",
+   "a": "extreme/01_STRESS_leaflet_30_defects/reference.pdf",
+   "b": "extreme/01_STRESS_leaflet_30_defects/sample.pdf",
+   "deck": "extreme/01_STRESS_leaflet_30_defects/approved_text.docx"
+  },
+  {
+   "name": "extreme/02_STRONG_digit_storm",
+   "design": "Extreme: stress tests and limits",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "17 number changes (digits, swaps, dropped decimals) buried in dense text"
+    }
+   ],
+   "base": "examples",
+   "a": "extreme/02_STRONG_digit_storm/reference.pdf",
+   "b": "extreme/02_STRONG_digit_storm/sample.pdf",
+   "deck": "extreme/02_STRONG_digit_storm/approved_text.docx"
+  },
+  {
+   "name": "extreme/03_STRESS_imposed_2up_sheet",
+   "design": "Extreme: stress tests and limits",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "2-up imposed sheet with crop marks: 8 defects, all on the RIGHT carton only"
+    }
+   ],
+   "base": "examples",
+   "a": "extreme/03_STRESS_imposed_2up_sheet/reference.pdf",
+   "b": "extreme/03_STRESS_imposed_2up_sheet/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "extreme/04_STRESS_pages_swapped_plus_defects",
+   "design": "Extreme: stress tests and limits",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Pages in the wrong order, plus 8 defects inside them"
+    }
+   ],
+   "base": "examples",
+   "a": "extreme/04_STRESS_pages_swapped_plus_defects/reference.pdf",
+   "b": "extreme/04_STRESS_pages_swapped_plus_defects/sample.pdf",
+   "deck": "extreme/04_STRESS_pages_swapped_plus_defects/approved_text.docx"
+  },
+  {
+   "name": "extreme/05_LIMIT_everything_at_once",
+   "design": "Extreme: stress tests and limits",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "20 defects, whole file scaled 98.5% and shifted, AND flattened to a picture"
+    }
+   ],
+   "base": "examples",
+   "a": "extreme/05_LIMIT_everything_at_once/reference.pdf",
+   "b": "extreme/05_LIMIT_everything_at_once/sample.pdf",
+   "deck": "extreme/05_LIMIT_everything_at_once/approved_text.docx"
+  },
+  {
+   "name": "extreme/06_LIMIT_flattened_100dpi",
+   "design": "Extreme: stress tests and limits",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "12 defects, sample supplied as a 100 dpi picture (small print will suffer)"
+    }
+   ],
+   "base": "examples",
+   "a": "extreme/06_LIMIT_flattened_100dpi/reference.pdf",
+   "b": "extreme/06_LIMIT_flattened_100dpi/sample.pdf",
+   "deck": "extreme/06_LIMIT_flattened_100dpi/approved_text.docx"
+  },
+  {
+   "name": "extreme/06_STRESS_flattened_200dpi",
+   "design": "Extreme: stress tests and limits",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "12 defects, sample supplied as a 200 dpi picture (small print will suffer)"
+    }
+   ],
+   "base": "examples",
+   "a": "extreme/06_STRESS_flattened_200dpi/reference.pdf",
+   "b": "extreme/06_STRESS_flattened_200dpi/sample.pdf",
+   "deck": "extreme/06_STRESS_flattened_200dpi/approved_text.docx"
+  },
+  {
+   "name": "extreme/07_LIMIT_phone_photo",
+   "design": "Extreme: stress tests and limits",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "A tilted, blurry phone photo of a defective carton. Expect a coverage warning, not a clean read"
+    }
+   ],
+   "base": "examples",
+   "a": "extreme/07_LIMIT_phone_photo/reference.pdf",
+   "b": "extreme/07_LIMIT_phone_photo/sample.pdf",
+   "deck": "extreme/07_LIMIT_phone_photo/approved_text.docx"
+  },
+  {
+   "name": "extreme/08_STRONG_page_rotated",
+   "design": "Extreme: stress tests and limits",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Same content, first page rotated 90 degrees in the file"
+    }
+   ],
+   "base": "examples",
+   "a": "extreme/08_STRONG_page_rotated/reference.pdf",
+   "b": "extreme/08_STRONG_page_rotated/sample.pdf",
+   "deck": "extreme/08_STRONG_page_rotated/approved_text.docx"
+  },
+  {
+   "name": "languages/01_en_vs_ru_wrong_language",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "English reference, Cyrillic sample: whole page in the wrong script"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/01_en_vs_ru_wrong_language/reference.pdf",
+   "b": "languages/01_en_vs_ru_wrong_language/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/02_en_vs_el_wrong_language",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "English reference, Greek sample"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/02_en_vs_el_wrong_language/reference.pdf",
+   "b": "languages/02_en_vs_el_wrong_language/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/03_en_vs_zh_wrong_language",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "English reference, Chinese sample"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/03_en_vs_zh_wrong_language/reference.pdf",
+   "b": "languages/03_en_vs_zh_wrong_language/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/04_en_vs_ar_wrong_language",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "English reference, Arabic sample"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/04_en_vs_ar_wrong_language/reference.pdf",
+   "b": "languages/04_en_vs_ar_wrong_language/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/05_fr_vs_es_same_script",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "French reference, Spanish sample: same alphabet. Known gap: no language_mismatch finding, only a pile of text changes"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/05_fr_vs_es_same_script/reference.pdf",
+   "b": "languages/05_fr_vs_es_same_script/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/06_en_vs_de_same_script",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "English reference, German sample: same alphabet, same known gap"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/06_en_vs_de_same_script/reference.pdf",
+   "b": "languages/06_en_vs_de_same_script/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/07_ru_clean_control",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "control",
+   "note": "",
+   "defects": [],
+   "base": "examples",
+   "a": "languages/07_ru_clean_control/reference.pdf",
+   "b": "languages/07_ru_clean_control/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/08_ru_strength_changed",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Russian: strength 500 -> 300 mg"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/08_ru_strength_changed/reference.pdf",
+   "b": "languages/08_ru_strength_changed/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/09_ru_limit_changed",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Russian: max tablets 4 -> 8"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/09_ru_limit_changed/reference.pdf",
+   "b": "languages/09_ru_limit_changed/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/10_ru_meaning_reversed",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Russian: 'do not use' -> 'may use' (correct spelling both ways)"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/10_ru_meaning_reversed/reference.pdf",
+   "b": "languages/10_ru_meaning_reversed/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/11_ru_typo",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Russian: letter changed in the product name (no Russian spell-check exists)"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/11_ru_typo/reference.pdf",
+   "b": "languages/11_ru_typo/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/12_ru_flattened_strength",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Russian, sample flattened to image: strength changed. Tests OCR on Cyrillic"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/12_ru_flattened_strength/reference.pdf",
+   "b": "languages/12_ru_flattened_strength/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/13_ru_flattened_clean_control",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "control",
+   "note": "",
+   "defects": [],
+   "base": "examples",
+   "a": "languages/13_ru_flattened_clean_control/reference.pdf",
+   "b": "languages/13_ru_flattened_clean_control/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/14_el_strength_changed",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Greek: strength changed"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/14_el_strength_changed/reference.pdf",
+   "b": "languages/14_el_strength_changed/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/15_zh_clean_control",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "control",
+   "note": "",
+   "defects": [],
+   "base": "examples",
+   "a": "languages/15_zh_clean_control/reference.pdf",
+   "b": "languages/15_zh_clean_control/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/16_zh_meaning_reversed",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Chinese: 'do not use' -> 'may use'"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/16_zh_meaning_reversed/reference.pdf",
+   "b": "languages/16_zh_meaning_reversed/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/17_ar_strength_changed",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "Arabic: strength changed (tests right-to-left text)"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/17_ar_strength_changed/reference.pdf",
+   "b": "languages/17_ar_strength_changed/sample.pdf",
+   "deck": ""
+  },
+  {
+   "name": "languages/18_de_dose_changed",
+   "design": "Languages: Russian, Greek, Chinese, Arabic and more",
+   "kind": "defect",
+   "note": "",
+   "defects": [
+    {
+     "description": "German: dosing interval changed (control for the Latin-script path)"
+    }
+   ],
+   "base": "examples",
+   "a": "languages/18_de_dose_changed/reference.pdf",
+   "b": "languages/18_de_dose_changed/sample.pdf",
+   "deck": ""
+  }
+ ]
+}
