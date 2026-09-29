@@ -64,8 +64,9 @@ def estimate(pa, pb, img_a, img_b, dpi, live: bool, move_tol_mm: float = 0.25) -
     if len(src) < 8:
         return None
     # already registered? most matched points sit where they did
-    still = np.linalg.norm(src - dst, axis=1) < 0.6 * (1 if method == "text" else 3)
-    if still.mean() >= 0.5:
+    # (text matches only: image features are noisier, and a slightly tilted scan would pass this test while its
+    # far edges are still several pixels out. For those, the corner-displacement check below decides.)
+    if method == "text" and (np.linalg.norm(src - dst, axis=1) < 0.6).mean() >= 0.5:
         return None
     thr = 1.0 if method == "text" else 3.0
     M, inl = cv2.estimateAffinePartial2D(src, dst, method=cv2.RANSAC, ransacReprojThreshold=thr, maxIters=4000, confidence=0.999)

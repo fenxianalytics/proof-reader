@@ -49,17 +49,17 @@ def lines(img_rgb: np.ndarray, min_conf: float = 0.5) -> list[tuple]:
     return [(np.array(b, np.float32), t, float(c)) for b, t, c in (res or []) if float(c) >= min_conf and t.strip()]
 
 
-def _read_one(img_rgb: np.ndarray, min_conf: float) -> tuple[str, float]:
+def _read_one(img_rgb: np.ndarray, min_conf: float, by_x: bool = False) -> tuple[str, float]:
     items = lines(img_rgb, min_conf)
     if not items:
         return "", 0.0
     items = [(float(b[:, 1].min()), float(b[:, 0].min()), t, c) for b, t, c in items]
-    items.sort(key=lambda t: (round(t[0] / 12), t[1]))
+    items.sort(key=(lambda t: t[1]) if by_x else (lambda t: (round(t[0] / 12), t[1])))  # by_x: one line of text, strictly left to right
     txt = re.sub(r"\s+", " ", " ".join(t[2] for t in items)).strip()
     return txt, sum(c * len(t) for _, _, t, c in items)
 
 
-def read(img_rgb: np.ndarray, min_conf: float = 0.5) -> str:
+def read(img_rgb: np.ndarray, min_conf: float = 0.5, by_x: bool = False) -> str:
     """Text found in a crop, reading order top-to-bottom / left-to-right, low-confidence words dropped."""
     if _get() is None or img_rgb.size == 0 or min(img_rgb.shape[:2]) < 6:
         return ""
@@ -68,10 +68,10 @@ def read(img_rgb: np.ndarray, min_conf: float = 0.5) -> str:
     if scale != 1.0:
         img_rgb = cv2.resize(img_rgb, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_CUBIC)
     img_rgb = cv2.copyMakeBorder(img_rgb, 12, 12, 12, 12, cv2.BORDER_REPLICATE)
-    best = _read_one(img_rgb, min_conf)
+    best = _read_one(img_rgb, min_conf, by_x)
     if h > 1.6 * w:  # probably vertical text: try it turned both ways
         for rot in (cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE):
-            cand = _read_one(cv2.rotate(img_rgb, rot), min_conf)
+            cand = _read_one(cv2.rotate(img_rgb, rot), min_conf, by_x)
             if cand[1] > best[1] * 1.15:
                 best = cand
     return best[0]

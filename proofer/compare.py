@@ -445,6 +445,8 @@ def _decode(img: np.ndarray, dpi: float) -> list[dict]:
     k = 72 / dpi
     out = []
     for r in zxingcpp.read_barcodes(img, return_errors=True):
+        if not r.text:
+            continue  # a decode error with nothing decoded is not a barcode
         p = r.position
         pts = [p.top_left, p.top_right, p.bottom_right, p.bottom_left]
         xs, ys = [q.x for q in pts], [q.y for q in pts]
@@ -543,7 +545,7 @@ def _ocr_printed_digits(img: np.ndarray, code: dict, dpi: float) -> tuple[str, l
     x0, y0, x1, y1 = code["bbox"]
     box = _pad(code["bbox"], 14) if abs(code["angle"]) in (90.0, 270.0) else [x0 - 10, y0 - 2, x1 + 8, y1 + 16]
     xa, ya, xb, yb = (max(0, int(v * k)) for v in box)
-    txt = ocr.read(img[ya:yb, xa:xb], min_conf=0.6)
+    txt = ocr.read(img[ya:yb, xa:xb], min_conf=0.6, by_x=True)  # the number is one line: read it strictly left to right
     s = re.sub(r"\D", "", txt)
     return (s, [xa / k, ya / k, xb / k, yb / k]) if len(s) >= 8 else None
 
