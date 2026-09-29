@@ -14,3 +14,4 @@ demo/
 results/
 samples/
 real/*.pdf
+language_tests/

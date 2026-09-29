@@ -100,7 +100,11 @@ def _page(lines: list[str], lang: str, path: Path):
         page.insert_textbox(pymupdf.Rect(28, y, 392, y + h), line, fontname="F0", fontfile=str(fontfile), fontsize=size,
                             align=2 if lang == "ar" else 0)
         y += h + 6
-    doc.save(path)
+    try:
+        doc.subset_fonts()  # embed only the glyphs used (a full CJK font is ~19 MB)
+    except Exception:
+        pass
+    doc.save(path, garbage=4, deflate=True)
     doc.close()
 
 
@@ -110,7 +114,7 @@ def _flatten(src: Path, dst: Path, dpi=300):
     out = pymupdf.open()
     p = out.new_page(width=d[0].rect.width, height=d[0].rect.height)
     p.insert_image(p.rect, pixmap=pix)
-    out.save(dst)
+    out.save(dst, garbage=4, deflate=True)
     out.close()
     d.close()
 
