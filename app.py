@@ -125,7 +125,7 @@ def index() -> Response:
 @app.get("/api/health")
 def health() -> dict:
     from proofer import spelling
-    return dict(version=__version__, ocr=ocr.available(), spelling=spelling.available())
+    return dict(version=__version__, ocr=ocr.available(), spelling=spelling.available(), shared=ISOLATE or bool(APP_PASSWORD) or jobs.TTL_HOURS > 0)
 
 
 @app.get("/api/samples")

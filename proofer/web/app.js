@@ -183,7 +183,7 @@ async function viewNew() {
       <label class="f">Render resolution <select id="dpi"><option value="300" selected>300 dpi (recommended)</option><option value="400">400 dpi</option><option value="600">600 dpi (slow)</option><option value="200">200 dpi (fast draft)</option></select></label>
       <label class="toggle"><input type="checkbox" id="ocr" checked><span>Read changed regions with OCR</span></label>
       <a class="chip btnlike" href="#/settings" id="profchip" title="Change in Settings">${icon('shield')} Profile: …</a>
-      <span class="sub" style="margin-left:auto">${icon('lock')} Files stay on this machine.</span>
+      <span class="sub" id="privacy" style="margin-left:auto">${icon('lock')} Files stay on this machine.</span>
     </div>
     <div class="cta"><button class="btn primary" id="go" disabled>${icon('zap')} Run proof</button></div>
     <div class="examples card" style="padding:20px"><h3>No files handy? Try a built-in example</h3>
@@ -225,6 +225,10 @@ async function viewNew() {
     catch (err) { toast(err.message, true); go.disabled = false; go.innerHTML = `${icon('zap')} Run proof`; }
   });
   loadExamples(view);
+  api('/api/health').then((h) => {  // a shared copy is not "this machine": say what actually happens to uploads
+    const el = $('#privacy', view);
+    if (h.shared && el) el.innerHTML = `${icon('lock')} Shared demo: use the built-in examples. Uploads are deleted automatically.`;
+  }).catch(() => {});
   api('/api/settings').then(({ settings, presets }) => { const c = $('#profchip', view); if (c) c.innerHTML = `${icon('shield')} Profile: ${esc((presets.find((p) => p.id === settings.profile) || {}).label || 'Standard')}`; }).catch(() => {});
 }
 function dropHtml(role, label, hint) {
