@@ -1,0 +1,128 @@
+[
+ {
+  "name": "01_en_vs_ru_wrong_language",
+  "reference": "en",
+  "sample": "ru",
+  "expect": "language_mismatch",
+  "note": "English reference, Cyrillic sample: whole page in the wrong script"
+ },
+ {
+  "name": "02_en_vs_el_wrong_language",
+  "reference": "en",
+  "sample": "el",
+  "expect": "language_mismatch",
+  "note": "English reference, Greek sample"
+ },
+ {
+  "name": "03_en_vs_zh_wrong_language",
+  "reference": "en",
+  "sample": "zh",
+  "expect": "language_mismatch",
+  "note": "English reference, Chinese sample"
+ },
+ {
+  "name": "04_en_vs_ar_wrong_language",
+  "reference": "en",
+  "sample": "ar",
+  "expect": "language_mismatch",
+  "note": "English reference, Arabic sample"
+ },
+ {
+  "name": "05_fr_vs_es_same_script",
+  "reference": "fr",
+  "sample": "es",
+  "expect": "any_finding",
+  "note": "French reference, Spanish sample: same alphabet. Known gap: no language_mismatch finding, only a pile of text changes"
+ },
+ {
+  "name": "06_en_vs_de_same_script",
+  "reference": "en",
+  "sample": "de",
+  "expect": "any_finding",
+  "note": "English reference, German sample: same alphabet, same known gap"
+ },
+ {
+  "name": "07_ru_clean_control",
+  "reference": "ru",
+  "sample": "ru",
+  "expect": "pass",
+  "note": "Identical Russian pair: must be silent"
+ },
+ {
+  "name": "08_ru_strength_changed",
+  "reference": "ru",
+  "sample": "ru",
+  "expect": "text_changed",
+  "note": "Russian: strength 500 -> 300 mg"
+ },
+ {
+  "name": "09_ru_limit_changed",
+  "reference": "ru",
+  "sample": "ru",
+  "expect": "text_changed",
+  "note": "Russian: max tablets 4 -> 8"
+ },
+ {
+  "name": "10_ru_meaning_reversed",
+  "reference": "ru",
+  "sample": "ru",
+  "expect": "text_changed",
+  "note": "Russian: 'do not use' -> 'may use' (correct spelling both ways)"
+ },
+ {
+  "name": "11_ru_typo",
+  "reference": "ru",
+  "sample": "ru",
+  "expect": "text_changed",
+  "note": "Russian: letter changed in the product name (no Russian spell-check exists)"
+ },
+ {
+  "name": "12_ru_flattened_strength",
+  "reference": "ru",
+  "sample": "ru",
+  "expect": "any_finding",
+  "note": "Russian, sample flattened to image: strength changed. Tests OCR on Cyrillic"
+ },
+ {
+  "name": "13_ru_flattened_clean_control",
+  "reference": "ru",
+  "sample": "ru",
+  "expect": "pass",
+  "note": "Russian, flattened but unchanged: must not raise false alarms"
+ },
+ {
+  "name": "14_el_strength_changed",
+  "reference": "el",
+  "sample": "el",
+  "expect": "text_changed",
+  "note": "Greek: strength changed"
+ },
+ {
+  "name": "15_zh_clean_control",
+  "reference": "zh",
+  "sample": "zh",
+  "expect": "pass",
+  "note": "Identical Chinese pair: must be silent"
+ },
+ {
+  "name": "16_zh_meaning_reversed",
+  "reference": "zh",
+  "sample": "zh",
+  "expect": "text_changed",
+  "note": "Chinese: 'do not use' -> 'may use'"
+ },
+ {
+  "name": "17_ar_strength_changed",
+  "reference": "ar",
+  "sample": "ar",
+  "expect": "text_changed",
+  "note": "Arabic: strength changed (tests right-to-left text)"
+ },
+ {
+  "name": "18_de_dose_changed",
+  "reference": "de",
+  "sample": "de",
+  "expect": "text_changed",
+  "note": "German: dosing interval changed (control for the Latin-script path)"
+ }
+]

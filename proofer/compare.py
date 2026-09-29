@@ -278,6 +278,7 @@ _SCRIPTS = [
     ("Arabic", 0x0600, 0x06FF), ("Hebrew", 0x0590, 0x05FF), ("Devanagari", 0x0900, 0x097F),
     ("Thai", 0x0E00, 0x0E7F), ("Han", 0x4E00, 0x9FFF), ("Hiragana/Katakana", 0x3040, 0x30FF),
     ("Hangul", 0xAC00, 0xD7A3),
+    ("Arabic", 0xFB50, 0xFDFF), ("Arabic", 0xFE70, 0xFEFF),  # presentation forms: how shaped Arabic is stored in most PDFs
 ]
 
 
