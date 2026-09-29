@@ -25,7 +25,7 @@ from pathlib import Path
 from . import __version__
 from . import profiles
 from .compare import compare
-from .report import build_payload, dumps, page_assets, sha256
+from .report import build_payload, page_assets, sha256
 
 ROOT = Path(__file__).resolve().parent.parent
 JOBS_DIR = ROOT / "results" / "jobs"

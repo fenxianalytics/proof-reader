@@ -783,7 +783,7 @@ def _merge_nearby(findings: list[Finding], page_no: int, gap: float = 30.0) -> l
     if len(findings) <= 1:
         return findings
     out: list[Finding] = []
-    for key in {f.detail.get("channel") for f in findings}:
+    for key in dict.fromkeys(f.detail.get("channel") for f in findings):  # first-seen order: a set would vary from run to run
         group = [f for f in findings if f.detail.get("channel") == key]
         for idx in _cluster(group, [f.bbox_a for f in group], lambda a, b: _dist(a, b) < gap):
             fs = [group[i] for i in idx]
@@ -1606,6 +1606,11 @@ def compare(path_a: str, path_b: str, cfg: Config | None = None, keep_images: bo
         if progress:
             progress(done, len(pairs))
         pa, pb = A[p], B[pj]
+        if pa.rotation != pb.rotation:
+            # a page whose /Rotate flag differs renders turned on its side, so everything would differ and every region
+            # would go to OCR. Say so once, then compare with the flag undone (in memory only).
+            findings.append(Finding("structure", "page_rotation", "major", p, f"Page rotation differs: {pa.rotation}° → {pb.rotation}°"))
+            pb.set_rotation(pa.rotation)
         size_differs = abs(pa.rect.width - pb.rect.width) > cfg.size_tol_pt or abs(pa.rect.height - pb.rect.height) > cfg.size_tol_pt
         if size_differs:
             findings.append(Finding("structure", "page_size", "major", p,

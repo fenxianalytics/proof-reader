@@ -16,7 +16,6 @@ from __future__ import annotations
 import difflib
 import re
 import unicodedata
-import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -107,7 +106,7 @@ def _ocr_blocks(page, pno: int, dpi: int) -> list[dict]:
     img = _render(page, dpi)
     k = 72 / dpi
     lines = []
-    for box, txt, conf, ang in ocr.page_lines(img):
+    for box, txt, _conf, ang in ocr.page_lines(img):
         xs, ys = box[:, 0] * k, box[:, 1] * k
         x0, x1, y0, y1 = float(xs.min()), float(xs.max()), float(ys.min()), float(ys.max())
         txt = norm(txt)

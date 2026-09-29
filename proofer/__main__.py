@@ -10,7 +10,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, ocr
+from . import __version__
 from .compare import Config, compare
 from .report import build_html, build_payload, findings_csv, page_assets, sha256
 
@@ -61,7 +61,6 @@ def main(argv=None) -> int:
             Path(args.csv).write_text(findings_csv(payload), encoding="utf-8")
         if args.pdf:
             from .annotate import build
-            from .explain import explain
             Path(args.pdf).write_bytes(build(args.sample, payload))
             print(f"annotated PDF: {args.pdf}")
     if args.html:

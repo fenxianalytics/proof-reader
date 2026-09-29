@@ -66,7 +66,7 @@ def pair(paths: list[str]) -> dict:
         else:
             unpaired.append(path)
     out = []
-    for key, g in groups.items():
+    for g in groups.values():
         vs = sorted(g.pop("versions"))
         if vs and g["ref"] is None and g["sample"] is None and len(vs) >= 2:
             g["ref"], g["sample"] = vs[-2][1], vs[-1][1]  # the newest version is checked against the one before it
