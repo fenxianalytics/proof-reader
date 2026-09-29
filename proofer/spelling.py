@@ -14,18 +14,50 @@ from pathlib import Path
 LANGS = ("en", "fr", "de", "es", "it", "pt", "nl")
 PRODUCT_DICT = Path(__file__).resolve().parent.parent / "dictionary.txt"
 WORD = re.compile(r"[^\W\d_]+(?:'[^\W\d_]+)?")
-_checkers = None
+NL = b"\n"
+_lists = None  # one sorted, newline-separated UTF-8 word list per language (a few MB in all, not ~150 MB of dicts)
+_en = None     # the full English checker: only needed for "did you mean" suggestions, so loaded on first use
 
 
 def _get():
-    global _checkers
-    if _checkers is None:
+    """Word lists for every language, built once from the library's own dictionaries (one language at a time, so the
+    full dictionaries are never all in memory together). A word is kept only if the library itself would check it."""
+    global _lists
+    if _lists is None:
         try:
             from spellchecker import SpellChecker
-            _checkers = [SpellChecker(language=l, distance=1) for l in LANGS]
+            lists = []
+            for lang in LANGS:
+                chk = SpellChecker(language=lang, distance=1)
+                # plain alphabetic words are always checked, except the two that Python reads as a number ("inf", "infinity")
+                words = sorted(w for w in chk.word_frequency.dictionary
+                               if "\n" not in w and ((w.isalpha() and w not in ("inf", "infinity")) or chk._check_if_should_check(w)))
+                lists.append(("\n".join(words) + "\n").encode("utf-8"))
+                del chk
+            _lists = lists
         except Exception:
-            _checkers = []
-    return _checkers
+            _lists = []
+    return _lists
+
+
+def _in_list(blob: bytes, w: str) -> bool:
+    """Is w a line of this sorted, newline-terminated word list? (binary search)"""
+    key = w.encode("utf-8")
+    lo, hi = 0, len(blob)  # invariant: lo is the start of a line, hi the end of one
+    while lo < hi:
+        mid = (lo + hi) // 2
+        start = blob.rfind(NL, lo, mid) + 1 if mid > lo else lo
+        start = max(start, lo)
+        end = blob.find(NL, mid, hi)
+        end = hi if end < 0 else end
+        line = blob[start:end]
+        if line == key:
+            return True
+        if line < key:
+            lo = end + 1
+        else:
+            hi = start
+    return False
 
 
 def available() -> bool:
@@ -56,15 +88,18 @@ def is_known(w: str, extra: set[str]) -> bool:
     if lw in extra:
         return True
     parts = [lw] + ([lw.split("'")[-1]] if "'" in lw else [])
-    return any(c.known(parts) for c in _get())
+    return any(_in_list(blob, part.lower()) for blob in _get() for part in parts)
 
 
 def suggest(w: str) -> str | None:
-    cs = _get()
-    if not cs:
+    global _en
+    if not _get():
         return None
     try:
-        s = cs[0].correction(w.casefold())
+        if _en is None:
+            from spellchecker import SpellChecker
+            _en = SpellChecker(language=LANGS[0], distance=1)
+        s = _en.correction(w.casefold())
     except Exception:
         return None
     return s if s and s != w.casefold() else None
