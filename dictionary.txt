@@ -1,0 +1,9 @@
+# Product dictionary: words the spell check should accept (brand names, INNs, excipients, company names).
+# One word per line; case doesn't matter. Lines starting with # are ignored.
+Zolvatrin
+Solvex
+Lumexa
+Lumexatib
+Calmexol
+Nordhaven
+Hafenstrasse

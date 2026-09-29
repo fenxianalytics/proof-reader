@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.claude/
+.venv/
+venv/
+.env
+
+# generated / bulky data and possibly client artwork
+_preview/
+blind_test/
+blind_test_hard/
+blind_test_new/
+demo/
+results/
+samples/
+real/*.pdf

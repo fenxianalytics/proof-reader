@@ -1,0 +1,11 @@
+pymupdf
+numpy
+opencv-python-headless
+scikit-image
+scipy
+zxing-cpp
+fastapi
+uvicorn
+python-multipart
+pydantic
+rapidocr-onnxruntime   # optional: OCR of changed regions in image-only artwork
