@@ -110,6 +110,10 @@ Latest runs (2026-09-26):
   pixel check. The report warns when this applies.
 - Colour is vector colorant values plus rendered RGB, not true CMYK / spot separations. Barcode grading is a
   print-quality proxy, not ISO/IEC 15416. Braille is grade 1 English.
+- Comparing a PDF with a **print-and-scan** is not reliable yet. On simulated scans (`bench_scan.py`) good-quality scans
+  produce false alarms on large coloured lettering and rough scans miss real changes. Use PDF against PDF; collect real
+  scanned pairs before relying on this.
+- Comparing two **images** of different resolutions (for example a PNG against a JPG) can miss a small changed number.
 - Not validated for regulated (GxP / 21 CFR Part 11) use. The audit trail is tamper-evident, but formal
   validation is a separate piece of work.
 
@@ -124,6 +128,39 @@ python -m proofer.batch FOLDER -o OUT --workers 2     # OUT/<pair>.html, summary
 ```
 
 `PROOFER_WORKERS` sets how many proofs the web app runs at once (default 2).
+
+## Sharing a copy with other people
+
+The app is built to run on one machine for one team. To let others try it through a link, run it as a container
+(`Dockerfile` in the repo; on Hugging Face Spaces, Railway, Cloud Run or any host that runs Docker) and set these
+environment variables. All are off by default, so a local install behaves as before.
+
+| Variable | What it does | The Dockerfile sets |
+|---|---|---|
+| `APP_PASSWORD` | Everything (page, API, files) asks for this password (any user name). Set it as a secret on the host, not in the repo. | not set |
+| `ISOLATE_SESSIONS=1` | Each browser only sees its own proofs and batches; the shared tolerance settings become read-only. | `1` |
+| `JOB_TTL_HOURS` | Proofs and batches untouched for this long are deleted, so the disk doesn't fill. | `24` |
+| `MAX_UPLOAD_MB` | Largest single upload (reference, sample or approved text). | `30` |
+| `PROOFER_WORKERS` | Proofs run at the same time. One proof can peak near 1 GB. | `1` |
+| `HOST`, `PORT` | Where the server listens. | `0.0.0.0`, `7860` |
+
+Notes: the built-in examples (`examples/`, rebuilt with `python make_examples.py`) are committed so a hosted copy has
+something to try. Files on a container host are lost when it restarts. **Session isolation is a convenience for a
+demo, not a security boundary: use `APP_PASSWORD`, and do not upload real client artwork to a public copy.**
+Memory: about 400 MB resting and up to about 1 GB for the heaviest single proof, so give the container 2 GB.
+
+## Checking that a change didn't move any result
+
+```bash
+python snapshot.py --save results/snapshot.json      # before: every finding for ~190 pairs (examples, answer key, blind sets)
+python snapshot.py --check results/snapshot.json     # after: reports any pair whose findings or verdict changed
+python bench_scan.py                                 # print-and-scan proxy: recall and false alarms on simulated scans
+python make_showcase.py && python make_showcase_extreme.py && python make_language_tests.py --build && python make_examples.py
+```
+
+Results are deterministic (the same input gives the same findings on every run), which is what makes the snapshot
+check meaningful. `bench_scan.py` uses *simulated* scans; real print-and-scan pairs are still needed before claiming
+anything about that workflow (see the caveats below).
 
 ## Blind tests
 

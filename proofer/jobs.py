@@ -33,6 +33,20 @@ BATCH_DIR = ROOT / "results" / "batches"
 DECISIONS = ("accepted", "rejected", "pending")
 _pool = ThreadPoolExecutor(max_workers=int(os.environ.get("PROOFER_WORKERS", "2")))
 _lock = threading.Lock()
+TTL_HOURS = float(os.environ.get("JOB_TTL_HOURS", "0"))  # > 0 on a shared host: proofs older than this are deleted
+
+
+def _purge_old() -> None:
+    """Delete proofs and batches nobody has touched for JOB_TTL_HOURS. Off by default (a local install keeps everything)."""
+    if TTL_HOURS <= 0:
+        return
+    cutoff = time.time() - TTL_HOURS * 3600
+    for d in (JOBS_DIR.iterdir() if JOBS_DIR.is_dir() else []):
+        if d.is_dir() and d.stat().st_mtime < cutoff:
+            shutil.rmtree(d, ignore_errors=True)
+    for f in (BATCH_DIR.glob("*.json") if BATCH_DIR.is_dir() else []):
+        if f.stat().st_mtime < cutoff:
+            f.unlink(missing_ok=True)
 
 
 def _write(path: Path, obj) -> None:
@@ -58,7 +72,8 @@ def job_dir(job_id: str) -> Path:
 
 
 def create(ref: bytes, sample: bytes, ref_name: str, sample_name: str, dpi: int = 300, ocr_on: bool = True,
-           deck: bytes | None = None, deck_name: str = "", batch: str = "", key: str = "") -> str:
+           deck: bytes | None = None, deck_name: str = "", batch: str = "", key: str = "", owner: str = "") -> str:
+    _purge_old()
     job_id = time.strftime("%y%m%d%H%M%S") + uuid.uuid4().hex[:4]
     d = JOBS_DIR / job_id
     (d / "pages").mkdir(parents=True)
@@ -71,7 +86,7 @@ def create(ref: bytes, sample: bytes, ref_name: str, sample_name: str, dpi: int 
     settings = profiles.load()
     _write(d / "status.json", dict(id=job_id, state="queued", progress=0.0, stage="Queued", settings=settings,
                                    names=dict(ref=ref_name, sample=sample_name, deck=deck_name if deck else ""), deck_file=deck_file, dpi=dpi, ocr=ocr_on,
-                                   batch=batch, key=key,
+                                   batch=batch, key=key, owner=owner,
                                    created=datetime.now().isoformat(timespec="seconds")))
     if batch:
         with _lock:
@@ -84,11 +99,12 @@ def create(ref: bytes, sample: bytes, ref_name: str, sample_name: str, dpi: int 
 
 
 # ── batches: many proofs submitted together, tracked as one ──────────────
-def create_batch(name: str, unpaired: list[str] | None = None) -> str:
+def create_batch(name: str, unpaired: list[str] | None = None, owner: str = "") -> str:
+    _purge_old()
     BATCH_DIR.mkdir(parents=True, exist_ok=True)
     bid = "b" + time.strftime("%y%m%d%H%M%S") + uuid.uuid4().hex[:4]
     _write(BATCH_DIR / f"{bid}.json", dict(id=bid, name=name or "Batch", created=datetime.now().isoformat(timespec="seconds"),
-                                           jobs=[], unpaired=unpaired or []))
+                                           jobs=[], unpaired=unpaired or [], owner=owner))
     return bid
 
 

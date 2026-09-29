@@ -10,10 +10,12 @@ reject each one, and sign the proof off. Everything stays on this machine (resul
 from __future__ import annotations
 
 import base64
+import contextvars
 import datetime
 import json
 import os
 import re
+import secrets
 from pathlib import Path
 
 import uvicorn
@@ -31,10 +33,43 @@ WEB = ROOT / "proofer" / "web"
 SAMPLES_DIR = ROOT / "samples"
 EXAMPLES_DIR = ROOT / "examples"
 RESULTS_DIR = ROOT / "results"
-MAX_UPLOAD = 200 * 1024 * 1024
+MAX_UPLOAD = int(float(os.environ.get("MAX_UPLOAD_MB", "200")) * 1024 * 1024)
+# Options for a copy shared with other people (all off by default, so a local install behaves exactly as before):
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "")            # require this password (HTTP basic auth, any user name)
+ISOLATE = os.environ.get("ISOLATE_SESSIONS", "") == "1"      # each browser only sees its own proofs; settings are read-only
+_sid: contextvars.ContextVar[str] = contextvars.ContextVar("sid", default="")
 
 app = FastAPI(title="packaging-proofer", version=__version__)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
+
+
+@app.middleware("http")
+async def guard(request, call_next):
+    if APP_PASSWORD:
+        supplied = ""
+        auth = request.headers.get("authorization", "")
+        if auth.lower().startswith("basic "):
+            try:
+                supplied = base64.b64decode(auth[6:]).decode("utf-8").partition(":")[2]
+            except Exception:  # noqa: BLE001 - a malformed header is just "no password"
+                supplied = ""
+        if not secrets.compare_digest(supplied.encode(), APP_PASSWORD.encode()):
+            return Response("Password required", status_code=401, headers={"WWW-Authenticate": 'Basic realm="Fenxi Proofer"'})
+    sid = request.cookies.get("fx_sid", "")
+    if not (sid.isalnum() and len(sid) <= 32):
+        sid = secrets.token_hex(8)
+    token = _sid.set(sid)
+    try:
+        response = await call_next(request)
+    finally:
+        _sid.reset(token)
+    if request.cookies.get("fx_sid") != sid:
+        response.set_cookie("fx_sid", sid, httponly=True, samesite="lax", max_age=30 * 86400)
+    return response
+
+
+def _mine(owner: str) -> bool:
+    return not ISOLATE or owner == _sid.get()
 
 
 def _job(job_id: str) -> str:
@@ -42,6 +77,8 @@ def _job(job_id: str) -> str:
         jobs.job_dir(job_id)
     except KeyError:
         raise HTTPException(404, "No such proof") from None
+    if ISOLATE and not _mine(jobs.status(job_id).get("owner", "")):
+        raise HTTPException(404, "No such proof")
     return job_id
 
 
@@ -58,12 +95,17 @@ def _load_pairs() -> list[dict]:
     return out
 
 
+async def _read_limited(up: UploadFile, label: str) -> bytes:
+    data = await up.read(MAX_UPLOAD + 1)  # never pull more than one byte past the limit into memory
+    if len(data) > MAX_UPLOAD:
+        raise HTTPException(413, f"{label} is larger than {MAX_UPLOAD // 2**20} MB")
+    return data
+
+
 async def _pdf(up: UploadFile, label: str) -> bytes:
     """Reference/sample upload as PDF bytes. A JPG or PNG is wrapped into a one-page PDF: the rest of the
     pipeline then treats it exactly like a scanned, image-only PDF (visual + OCR, no text layer)."""
-    data = await up.read()
-    if len(data) > MAX_UPLOAD:
-        raise HTTPException(413, f"{label} is larger than {MAX_UPLOAD // 2**20} MB")
+    data = await _read_limited(up, label)
     if is_pdf(data):
         return data
     if is_image(data):
@@ -105,14 +147,11 @@ async def create_job(reference: UploadFile = File(...), sample: UploadFile = Fil
         deck_name = deck.filename
         if Path(deck_name).suffix.lower() not in (".docx", ".txt", ".pdf"):
             raise HTTPException(400, "Approved text must be a .docx, .txt or .pdf file")
-        deck_bytes = await deck.read()
+        deck_bytes = await _read_limited(deck, "Approved text")
     if batch:
-        try:
-            jobs.batch(batch)
-        except KeyError:
-            raise HTTPException(404, "No such batch") from None
+        _batch(batch)
     return dict(id=jobs.create(ref, smp, reference.filename or "reference.pdf", sample.filename or "sample.pdf", dpi, ocr_on, deck_bytes, deck_name,
-                               batch=batch, key=key))
+                               batch=batch, key=key, owner=_sid.get()))
 
 
 # ── batches ───────────────────────────────────────────────────────────────
@@ -133,19 +172,22 @@ class BatchReq(BaseModel):
 
 @app.post("/api/batches")
 def create_batch(req: BatchReq) -> dict:
-    return dict(id=jobs.create_batch(req.name, req.unpaired))
+    return dict(id=jobs.create_batch(req.name, req.unpaired, owner=_sid.get()))
 
 
 @app.get("/api/batches")
 def list_batches() -> list[dict]:
-    return jobs.batches()
+    return [b for b in jobs.batches() if _mine(b.get("owner", ""))]
 
 
 def _batch(bid: str) -> dict:
     try:
-        return jobs.batch(bid)
+        b = jobs.batch(bid)
     except KeyError:
         raise HTTPException(404, "No such batch") from None
+    if not _mine(b.get("owner", "")):
+        raise HTTPException(404, "No such batch")
+    return b
 
 
 @app.get("/api/batches/{bid}")
@@ -215,17 +257,18 @@ def create_sample_job(req: SampleReq) -> dict:
         deck = EXAMPLES_DIR / rec["deck"] if rec.get("deck") else None
         use = req.with_deck and deck is not None and deck.exists()
         return dict(id=jobs.create(ref.read_bytes(), smp.read_bytes(), "reference.pdf", "sample.pdf",
-                                   deck=deck.read_bytes() if use else None, deck_name="approved_text.docx" if use else ""))
+                                   deck=deck.read_bytes() if use else None, deck_name="approved_text.docx" if use else "", owner=_sid.get()))
     ref, smp = SAMPLES_DIR / rec["a"], SAMPLES_DIR / rec["b"]
     deck = SAMPLES_DIR / "decks" / f"{rec.get('design', 'syrup')}.docx"
     use = req.with_deck and deck.exists()
     return dict(id=jobs.create(ref.read_bytes(), smp.read_bytes(), Path(rec["a"]).name, Path(rec["b"]).name,
-                               deck=deck.read_bytes() if use else None, deck_name=f"{rec.get('design', 'syrup')}_approved_text.docx" if use else ""))
+                               deck=deck.read_bytes() if use else None, deck_name=f"{rec.get('design', 'syrup')}_approved_text.docx" if use else "",
+                               owner=_sid.get()))
 
 
 @app.get("/api/jobs")
 def list_jobs() -> list[dict]:
-    return jobs.listing()
+    return [j for j in jobs.listing() if _mine(j.get("owner", ""))]
 
 
 @app.get("/api/jobs/{job_id}")
@@ -333,6 +376,8 @@ def get_settings() -> dict:
 @app.put("/api/settings")
 def put_settings(req: SettingsReq) -> dict:
     from proofer import profiles
+    if ISOLATE:  # one shared settings file: on a shared copy, one visitor must not retune it for everyone
+        raise HTTPException(403, "Settings are read-only on this shared copy")
     try:
         return dict(settings=profiles.save(req.model_dump()))
     except ValueError as exc:

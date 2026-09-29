@@ -11,6 +11,7 @@ COPY --chown=user . .
 RUN mkdir -p results/jobs results/batches && chown -R user:user /home/user/app
 USER user
 
-ENV HOST=0.0.0.0 PORT=7860 PYTHONUNBUFFERED=1
+# shared-copy defaults (see README, "Sharing a copy with other people"); set APP_PASSWORD as a secret on the host
+ENV HOST=0.0.0.0 PORT=7860 PYTHONUNBUFFERED=1 PROOFER_WORKERS=1 MAX_UPLOAD_MB=30 JOB_TTL_HOURS=24 ISOLATE_SESSIONS=1
 EXPOSE 7860
 CMD ["python", "app.py"]
