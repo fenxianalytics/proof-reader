@@ -1,7 +1,6 @@
 pymupdf
 numpy
 opencv-python-headless
-scikit-image
 scipy
 zxing-cpp
 fastapi

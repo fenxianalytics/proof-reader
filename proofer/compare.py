@@ -63,10 +63,10 @@ class Config:
                                         # (both grayscale channels near-constant in the local window)
     ocr: bool = True                   # describe flagged regions with OCR when an engine is installed
     ocr_max_regions: int = 25          # per page; OCR is the slow step
-    page_align_min_sim: float = 0.35
+    page_align_min_sim: float = 0.35   # when page counts differ, pages pair up only above this similarity
     register: bool = True             # detect and undo a whole-page shift / scale / rotation / photo before comparing
     separation_dpi: int = 100          # CMYK plate comparison resolution
-    separation_tol: float = 12.0       # % ink difference on any one plate that counts as a change   # when page counts differ, pages pair up only above this similarity
+    separation_tol: float = 12.0       # % ink difference on any one plate that counts as a change
     image_ppi_drop: float = 0.85       # sample image effective-ppi / reference below this -> resolution finding
 
 
@@ -377,7 +377,7 @@ def _reconcile_moves(fs: list[Finding], page_no: int, tol_mm: float = 0.25) -> l
     for a in add:
         aw, pos, used = [w[4] for w in a.detail["words"]], 0, []
         while pos < len(aw):
-            hit = next((r for r in rem if id(r) not in drop and r not in used and [w[4] for w in r.detail["words"]] == aw[pos:pos + len(r.detail["words"])]), None)
+            hit = next((r for r in rem if id(r) not in drop and all(r is not u[0] for u in used) and [w[4] for w in r.detail["words"]] == aw[pos:pos + len(r.detail["words"])]), None)
             if hit is None:
                 break
             used.append((hit, pos))
@@ -1590,7 +1590,10 @@ def _assign_confidence(f: Finding, raster: bool) -> None:
 
 
 def compare(path_a: str, path_b: str, cfg: Config | None = None, keep_images: bool = True, progress=None, deck: str | None = None,
-            settings: dict | None = None) -> Result:
+            settings: dict | None = None, page_sink=None) -> Result:
+    """page_sink(record) -> anything: called with each page's full-resolution images as soon as that page is done, and its
+    return value is kept in Result.pages instead. That lets a caller turn a page into small screen images straight away, so
+    memory doesn't grow with the page count. Without it, Result.pages holds the full-resolution images of every page."""
     cfg = cfg or Config()
     A, B = open_pdf(path_a), open_pdf(path_b)
     findings: list[Finding] = []
@@ -1775,8 +1778,9 @@ def compare(path_a: str, path_b: str, cfg: Config | None = None, keep_images: bo
             checks.insert(0, dict(name="Registration", status="ran", note=align.describe(T)[0].split(". ")[0] + f" ({T['inliers']} matching points)"))
         coverage.append(dict(page=p, sample_page=pj, mode=mode, limited=bool(raster or photo), checks=checks))
         if keep_images:
-            pages.append(dict(page=p, sample_page=pj, img_a=img_a, img_b=img_b, mask=mask, dpi=cfg.dpi, aligned=T is not None,
-                              H=H.tolist() if H is not None else None))
+            rec = dict(page=p, sample_page=pj, img_a=img_a, img_b=img_b, mask=mask, dpi=cfg.dpi, aligned=T is not None,
+                       H=H.tolist() if H is not None else None)
+            pages.append(page_sink(rec) if page_sink else rec)
         page_H[pj] = (p, H)
 
     # ── document-level checks on the sample: approved text (copy deck) and spelling ──

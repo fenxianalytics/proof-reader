@@ -160,12 +160,15 @@ def _run(job_id: str) -> None:
         def progress(done: int, total: int) -> None:
             _set(d, stage=f"Comparing page {done + 1} of {total}", progress=0.05 + 0.8 * done / max(total, 1))
         deck = str(d / st["deck_file"]) if st.get("deck_file") else None
-        result = compare(str(d / "ref.pdf"), str(d / "sample.pdf"), cfg, keep_images=True, progress=progress, deck=deck, settings=settings)
-        _set(d, stage="Rendering the report", progress=0.9)
-        assets = [page_assets(pg) for pg in result.pages]
-        for pg, a in zip(result.pages, assets):
+
+        def keep_page(pg: dict) -> dict:  # each page becomes its small screen images at once, so full-size ones are never piled up
+            a = page_assets(pg)
             for kind in ("ref", "sample", "overlay"):
                 (d / "pages" / f"{pg['page']}_{kind}.png").write_bytes(a[kind])
+            return dict(page=pg["page"], sample_page=pg["sample_page"], assets=a)
+        result = compare(str(d / "ref.pdf"), str(d / "sample.pdf"), cfg, keep_images=True, progress=progress, deck=deck, settings=settings, page_sink=keep_page)
+        _set(d, stage="Rendering the report", progress=0.9)
+        assets = [pg["assets"] for pg in result.pages]
         hashes = dict(ref=sha256(d / "ref.pdf"), sample=sha256(d / "sample.pdf"))
         if deck:
             hashes["deck"] = sha256(deck)
