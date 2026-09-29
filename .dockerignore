@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.git/
+.claude/
+results/
+samples/
+demo/
+blind_test*/
+_preview/
+language_tests/
+*.pdf
+!examples/**/*.pdf

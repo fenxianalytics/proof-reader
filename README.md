@@ -1,3 +1,13 @@
+---
+title: Fenxi Proofer
+emoji: 🔍
+colorFrom: purple
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Fenxi Proofer
 
 Artwork proofing for packaging. It compares a **sample** PDF (or a JPG/PNG - a photo of the printed piece
