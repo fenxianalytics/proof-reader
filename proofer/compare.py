@@ -123,6 +123,15 @@ def rgb2lab(img) -> np.ndarray:
     return cv2.cvtColor(a, cv2.COLOR_RGB2Lab)
 
 
+def lab_dist(a: np.ndarray, b: np.ndarray, rows: int = 256) -> np.ndarray:
+    """Per-pixel CIE-Lab distance between two RGB images. Every pixel is converted independently, so doing it in strips
+    gives exactly the same numbers as converting whole pages, without holding several full-size float arrays at once."""
+    out = np.empty(a.shape[:2], np.float32)
+    for y in range(0, a.shape[0], rows):
+        out[y:y + rows] = np.linalg.norm(rgb2lab(a[y:y + rows]) - rgb2lab(b[y:y + rows]), axis=-1)
+    return out
+
+
 def _norm(s: str) -> str:
     return unicodedata.normalize("NFKC", s).replace(" ", " ")
 
@@ -1001,14 +1010,14 @@ def _pair_noise(a: np.ndarray, b: np.ndarray, tile: int = 48) -> float:
     Upper-quartile of per-tile mean absolute grey difference. Defects touch a few tiles, so the 75th
     percentile reflects resampling noise, not the defects. 0 means pixel-identical wherever nothing
     changed (e.g. a flattened copy at the same dpi); 20-60 means the copy was resampled."""
-    ga, gb = cv2.cvtColor(a, cv2.COLOR_RGB2GRAY).astype(np.float32), cv2.cvtColor(b, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    ga, gb = cv2.cvtColor(a, cv2.COLOR_RGB2GRAY), cv2.cvtColor(b, cv2.COLOR_RGB2GRAY)  # 8-bit: differences of whole grey levels are exact either way
     ink = ((ga < 200) | (gb < 200)).astype(np.float32)
     h, w = ga.shape[0] // tile, ga.shape[1] // tile
     if h < 1 or w < 1:
         return 99.0
     rs = lambda x: cv2.resize(x, (w, h), interpolation=cv2.INTER_AREA)
     den = rs(ink)
-    vals = (rs(np.abs(ga - gb) * ink) / np.maximum(den, 1e-6))[den > 0.02]
+    vals = (rs(cv2.absdiff(ga, gb).astype(np.float32) * ink) / np.maximum(den, 1e-6))[den > 0.02]
     return float(np.percentile(vals, 75)) if vals.size else 0.0
 
 
@@ -1072,7 +1081,7 @@ def compare_visual(img_a, img_b, pa, pb, page_no, explained_pt, cfg, raster, noi
     k = cfg.dpi / 72
     text_page = pa if pa.get_text("words") else (pb if pb.get_text("words") else None)
     a, b = _canvas(img_a, img_b)
-    de_raw = np.linalg.norm(rgb2lab(a) - rgb2lab(b), axis=-1)
+    de_raw = lab_dist(a, b)
     if noise is None:
         noise = _pair_noise(a, b) if raster else 0.0
     # same pixel grid, not merely similar - a registered page was resampled by a sub-pixel offset, so never 'aligned'
@@ -1085,7 +1094,7 @@ def compare_visual(img_a, img_b, pa, pb, page_no, explained_pt, cfg, raster, noi
     elif raster:
         ab = cv2.GaussianBlur(a, (0, 0), cfg.raster_blur)
         bb = cv2.GaussianBlur(b, (0, 0), cfg.raster_blur)
-        de_blur = np.linalg.norm(rgb2lab(ab) - rgb2lab(bb), axis=-1)
+        de_blur = lab_dist(ab, bb)
         # resampling noise from two independent rasterisations shows up wherever the artwork has fine
         # detail - hard edges, but just as much halftone patterns (QR/DataMatrix modules) or photo
         # texture (a continuous-tone illustration); a genuinely FLAT region (solid fill, no local
