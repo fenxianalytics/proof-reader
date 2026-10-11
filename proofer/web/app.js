@@ -645,11 +645,14 @@ function openReport(p, standalone) {
     const g = Pg();
     const items = real.filter((f) => pageOf(f) === R.page && (f[key] || f.bbox_a || f.bbox_b));
     const seen = {};
-    const rects = items.map((f) => {
-      const b = f[key] || (key === 'bbox_b' ? f.bbox_a : f.bbox_b) || f.bbox_a || f.bbox_b;
-      const k = b.map((v) => Math.round(v / 3)).join(',');  // findings on the same spot: put labels side by side
-      const off = (seen[k] = (seen[k] ?? -1) + 1);
-      return `<g class="mk ${R.sel === f.id ? 'sel' : ''}" data-id="${f.id}" data-off="${off}" data-b="${b.join(',')}"><rect class="glow"/><rect class="box"/><g class="lbl"><rect/><text>${f.id}</text></g></g>`;
+    const rects = items.flatMap((f) => {
+      const b0 = f[key] || (key === 'bbox_b' ? f.bbox_a : f.bbox_b) || f.bbox_a || f.bbox_b;
+      // the same edit repeated on the page is one finding with a box on every spot
+      return [b0, ...((f.detail && f.detail.also_at) || [])].map((b) => {
+        const k = b.map((v) => Math.round(v / 3)).join(',');  // findings on the same spot: put labels side by side
+        const off = (seen[k] = (seen[k] ?? -1) + 1);
+        return `<g class="mk ${R.sel === f.id ? 'sel' : ''}" data-id="${f.id}" data-off="${off}" data-b="${b.join(',')}"><rect class="glow"/><rect class="box"/><g class="lbl"><rect/><text>${f.id}</text></g></g>`;
+      });
     }).join('');
     return `<svg class="marks" viewBox="0 0 ${g.w_pt} ${g.h_pt}" style="${R.showMarks ? '' : 'display:none'}">${rects}</svg>`;
   }
@@ -763,7 +766,7 @@ function openReport(p, standalone) {
     });
   }
   function focusBoxes(f) {
-    const bs = [f.bbox_a, f.bbox_b].filter(Boolean);
+    const bs = [f.bbox_a, f.bbox_b, ...((f.detail && f.detail.also_at) || [])].filter(Boolean);
     if (!bs.length) return;
     const b = [Math.min(...bs.map((x) => x[0])), Math.min(...bs.map((x) => x[1])), Math.max(...bs.map((x) => x[2])), Math.max(...bs.map((x) => x[3]))];
     const { w, h } = paneSize(), bw = Math.max(8, (b[2] - b[0]) * PX_PER_PT), bh = Math.max(8, (b[3] - b[1]) * PX_PER_PT);

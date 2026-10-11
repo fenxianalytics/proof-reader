@@ -59,15 +59,22 @@ def _read_one(img_rgb: np.ndarray, min_conf: float, by_x: bool = False) -> tuple
     return txt, sum(c * len(t) for _, _, t, c in items)
 
 
-def read(img_rgb: np.ndarray, min_conf: float = 0.5, by_x: bool = False) -> str:
-    """Text found in a crop, reading order top-to-bottom / left-to-right, low-confidence words dropped."""
+def read(img_rgb: np.ndarray, min_conf: float = 0.5, by_x: bool = False, upscale: bool = True) -> str:
+    """Text found in a crop, reading order top-to-bottom / left-to-right, low-confidence words dropped.
+    upscale=False when the caller already sized the text (the model reads ~32-40 px tall text best)."""
     if _get() is None or img_rgb.size == 0 or min(img_rgb.shape[:2]) < 6:
         return ""
     h, w = img_rgb.shape[:2]
-    scale = 2.0 if max(h, w) < 400 else 1.0  # tiny crops OCR far better upscaled
+    scale = 2.0 if upscale and max(h, w) < 400 else 1.0  # tiny crops OCR far better upscaled
     if scale != 1.0:
         img_rgb = cv2.resize(img_rgb, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_CUBIC)
-    img_rgb = cv2.copyMakeBorder(img_rgb, 12, 12, 12, 12, cv2.BORDER_REPLICATE)
+    if upscale:
+        img_rgb = cv2.copyMakeBorder(img_rgb, 12, 12, 12, 12, cv2.BORDER_REPLICATE)
+    else:
+        # a caller-sized word crop is tight and touches the letters: repeating its edge pixels smears them into
+        # streaks ("d c+ av 52" for "Bactoclav-652"), so pad with the background (median of the outer frame)
+        frame = np.concatenate([img_rgb[0], img_rgb[-1], img_rgb[:, 0], img_rgb[:, -1]])
+        img_rgb = cv2.copyMakeBorder(img_rgb, 12, 12, 12, 12, cv2.BORDER_CONSTANT, value=[int(v) for v in np.median(frame, axis=0)])
     best = _read_one(img_rgb, min_conf, by_x)
     if h > 1.6 * w:  # probably vertical text: try it turned both ways
         for rot in (cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE):

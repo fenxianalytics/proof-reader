@@ -30,7 +30,7 @@ RESULTS = ROOT / "results"
 
 def touches(f, region, pad=4.0):
     zone = _pad(region, pad)
-    return any(r and _inter(r, zone) > 0 for r in (f.bbox_a, f.bbox_b))
+    return any(r and _inter(r, zone) > 0 for r in (f.bbox_a, f.bbox_b, *f.detail.get("also_at", [])))
 
 
 def run(cfg: Config | None = None, verbose=True):

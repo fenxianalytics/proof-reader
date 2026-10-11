@@ -43,25 +43,26 @@ def build(sample_pdf: str, payload: dict) -> bytes:
         box = f.get("bbox_b") or f.get("bbox_a")
         if not box:
             continue
-        # findings are reported in the reference's frame; a registered page is mapped back onto the sample's own
-        r = pymupdf.Rect(_inv_map(pg.get("H"), box)) + (-2, -2, 2, 2)
         page = doc[spage]
-        r = r & page.rect
-        if r.is_empty:
-            continue
         rv = reviews.get(str(f["id"]), {})
-        a = page.add_rect_annot(r)
-        a.set_colors(stroke=COL["mark"])
-        a.set_border(width=1.4)
-        a.set_opacity(0.9)
-        status = f" [{rv['decision']}{' by ' + rv['reviewer'] if rv.get('reviewer') else ''}]" if rv.get("decision", "pending") != "pending" else ""
-        a.set_info(title=f"#{f['id']} {f['severity'].upper()} {f['category']}/{f['kind']}{status}",
-                   content=f"{f['message']}\n\nWhy: {f.get('why', '')}" + (f"\n\nReviewer note: {rv['note']}" if rv.get("note") else ""))
-        a.update()
-        lab = pymupdf.Rect(r.x0, max(0, r.y0 - 9), r.x0 + 6 + 5 * len(str(f["id"])), max(9, r.y0))
-        t = page.add_freetext_annot(lab, str(f["id"]), fontsize=6.5, text_color=(1, 1, 1), fill_color=COL["mark"], align=1)
-        t.set_info(title=f"#{f['id']}", content=f["message"])
-        t.update()
+        # the same edit repeated on the page is one finding with a box on every spot
+        for box in [box] + list((f.get("detail") or {}).get("also_at") or []):
+            # findings are reported in the reference's frame; a registered page is mapped back onto the sample's own
+            r = (pymupdf.Rect(_inv_map(pg.get("H"), box)) + (-2, -2, 2, 2)) & page.rect
+            if r.is_empty:
+                continue
+            a = page.add_rect_annot(r)
+            a.set_colors(stroke=COL["mark"])
+            a.set_border(width=1.4)
+            a.set_opacity(0.9)
+            status = f" [{rv['decision']}{' by ' + rv['reviewer'] if rv.get('reviewer') else ''}]" if rv.get("decision", "pending") != "pending" else ""
+            a.set_info(title=f"#{f['id']} {f['severity'].upper()} {f['category']}/{f['kind']}{status}",
+                       content=f"{f['message']}\n\nWhy: {f.get('why', '')}" + (f"\n\nReviewer note: {rv['note']}" if rv.get("note") else ""))
+            a.update()
+            lab = pymupdf.Rect(r.x0, max(0, r.y0 - 9), r.x0 + 6 + 5 * len(str(f["id"])), max(9, r.y0))
+            t = page.add_freetext_annot(lab, str(f["id"]), fontsize=6.5, text_color=(1, 1, 1), fill_color=COL["mark"], align=1)
+            t.set_info(title=f"#{f['id']}", content=f["message"])
+            t.update()
     # summary page at the front
     sp = doc.new_page(0, width=595, height=842)
     c, y = payload["counts"], 60
@@ -73,6 +74,10 @@ def build(sample_pdf: str, payload: dict) -> bytes:
         rc = sp.insert_textbox(pymupdf.Rect(50, y, 545, y + 400), txt, fontsize=size, fontname=font, color=color)
         used = 400 - rc if rc >= 0 else 400
         y += min(used, 400) + gap
+
+    def clip(txt, n):
+        # cut long messages at a word boundary and say so, never mid-word ("by eye o")
+        return txt if len(txt) <= n else txt[:n].rsplit(" ", 1)[0].rstrip(" ,;:-") + " ..."
 
     line("Proof report", 20, "hebo", gap=2)
     line(f"Sample: {payload['names']['sample']}    Reference: {payload['names']['ref']}"
@@ -86,11 +91,11 @@ def build(sample_pdf: str, payload: dict) -> bytes:
         if f["severity"] == "info" and f["kind"] != "variable_data":
             continue
         rv = reviews.get(str(f["id"]), {}).get("decision", "")
-        line(f"#{f['id']}  {f['severity'].upper():8}  p{f['page'] + 1}  {f['message'][:170]}" + (f"  [{rv}]" if rv and rv != "pending" else ""), 7.5, gap=2)
+        line(f"#{f['id']}  {f['severity'].upper():8}  p{f['page'] + 1}  {clip(f['message'], 170)}" + (f"  [{rv}]" if rv and rv != "pending" else ""), 7.5, gap=2)
         if y > 780:
             break
     for a in payload.get("attention", [])[:6]:
-        line("Worth a look: " + a["message"][:200], 7.5, color=(0.5, 0.35, 0.0), gap=2)
+        line("Worth a look: " + clip(a["message"], 200), 7.5, color=(0.5, 0.35, 0.0), gap=2)
     sh = (payload.get("meta") or {}).get("sha256", {})
     line("", 4)
     line(f"Engine v{payload['engine']['version']} · {payload['engine'].get('profile', 'Standard')} profile · {payload['engine']['dpi']} dpi · "

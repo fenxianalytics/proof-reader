@@ -671,45 +671,116 @@ def _caption_strip(img: np.ndarray, code: dict, dpi: float) -> tuple[np.ndarray,
     return img[ya:yb, xa:xb], [xa / k, ya / k, xb / k, yb / k]
 
 
+def _upright(img: np.ndarray, d) -> np.ndarray:
+    """Turn a crop so text written in direction d (a PyMuPDF line 'dir') reads left to right. Both sides of a
+    comparison are turned the same way, so OCR can't read one upward and the other downward ("0249" vs "9420")."""
+    if abs(d[1]) > abs(d[0]):
+        return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE if d[1] < 0 else cv2.ROTATE_90_COUNTERCLOCKWISE)
+    return cv2.rotate(img, cv2.ROTATE_180) if d[0] < 0 else img
+
+
+def _line_dirs(page) -> list[tuple]:
+    return [(ln["bbox"], ln["dir"]) for blk in page.get_text("dict")["blocks"] for ln in blk.get("lines", [])]
+
+
+def _dir_at(dirs, r):
+    cx, cy = (r[0] + r[2]) / 2, (r[1] + r[3]) / 2
+    return next((d for b, d in dirs if b[0] <= cx <= b[2] and b[1] <= cy <= b[3]), (1.0, 0.0))
+
+
+def _squash(t: str) -> str:
+    # NFKC so "℃" and "°C" read the same; spacing and case are OCR noise, not changes
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", t)).casefold()
+
+
+def _ocr_as_live(live: str, o_live: str, o_img: str) -> str:
+    """What the image side says, written like the live text. Small-text OCR adds quirks ("30° o C.", "6 0 0"), so when
+    both readings see the same letters and only the numbers differ, put the image's numbers into the exact live
+    words: live "25°C." + OCR "30° o C." -> "30°C.". Anything else is shown as raw OCR."""
+    # a lone character the live words don't have is OCR debris: "o" for a small degree sign ("30° o C."), "r" or
+    # "1" for a leftover speck between "600" and "mg"
+    lone = not any(len(w) == 1 for w in live.split())
+    strip = lambda t: " ".join(w for w in t.split() if not (lone and len(w) == 1))
+    # "6 0 0" -> "600" (a number read digit by digit), but "600 1" stays a number plus a speck
+    join = lambda t: re.sub(r"(?<!\S)\d(?:\s+\d)+(?!\S)", lambda m: re.sub(r"\s+", "", m.group()), t)
+    o_live, img = strip(join(o_live)), strip(join(o_img))
+    letters = lambda t: re.sub(r"[^a-z]", "", unicodedata.normalize("NFKC", t).casefold())
+    nums_live, nums_img = re.findall(r"\d+", live), re.findall(r"\d+", img)
+    if letters(o_live) != letters(img) or len(nums_live) != len(nums_img) or not nums_live:
+        return o_img
+    it = iter(nums_img)
+    return re.sub(r"\d+", lambda m: next(it), live)
+
+
 def compare_fine_print(pa, img_a, img_b, page_no, cfg, explained_pt) -> list[Finding]:
-    """Small numbers on a resampled image-only sample: the pixel check has to be tolerant there and can miss a
-    changed digit in 4-6 pt text. For each small number in the reference's live text, OCR the same spot in the
-    sample AND in a copy of the reference degraded to scan quality. Only when the degraded reference still reads
-    correctly but the sample reads differently is it reported - so a plain OCR misread can't raise an alarm."""
+    """Fine print on a resampled image-only sample: the pixel check has to be tolerant there and can miss a
+    changed digit or letter in 4-6 pt text. For each small word in the reference's live text, OCR the same spot in
+    the sample AND in a copy of the reference degraded to scan quality. Only when the degraded reference still
+    reads correctly but the sample reads differently is it reported - so a plain OCR misread can't raise an alarm.
+    Numbers come first (a wrong number is critical); words of 3+ letters in 5 pt or larger are checked after them."""
     if not (cfg.ocr and ocr.available()):
         return []
     k = cfg.dpi / 72
-    out: list[Finding] = []
-    seen: dict[str, int] = {}
+    nums, words, seen = [], [], {}
     for blk in pa.get_text("dict")["blocks"]:
         for ln in blk.get("lines", []):
             for sp in ln["spans"]:
-                if sp["size"] >= 7 or not re.search(r"\d", sp["text"]):
+                if sp["size"] >= 7:
                     continue
                 for w in pa.get_text("words", clip=pymupdf.Rect(sp["bbox"])):
-                    digits = re.sub(r"\D", "", w[4])
-                    if not digits or any(_inter(list(w[:4]), e) > 0 for e in explained_pt):
+                    if any(_inter(list(w[:4]), e) > 0 for e in explained_pt):
                         continue
                     seen[w[4]] = seen.get(w[4], 0) + 1
-                    if seen[w[4]] > 4 or len(seen) > 60:
+                    if seen[w[4]] > 4:
                         continue  # repeated cells: a handful of each is enough, and keep the page fast
-                    r = _pad(list(w[:4]), 1.2)
-                    x0, y0, x1, y1 = (max(0, int(v * k)) for v in r)
-                    ca, cb = img_a[y0:y1, x0:x1], img_b[y0:y1, x0:x1]
-                    if ca.size == 0 or cb.size == 0:
-                        continue
-                    sm = cv2.resize(ca, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)  # ~150 dpi, like the scan
-                    deg = cv2.resize(sm, (ca.shape[1], ca.shape[0]), interpolation=cv2.INTER_LINEAR)
-                    up = lambda im: cv2.resize(im, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-                    ra = re.sub(r"\D", "", ocr.read(up(deg), 0.3))
-                    rb = re.sub(r"\D", "", ocr.read(up(cb), 0.3))
-                    # same number of digits: a changed digit, not a partial read of a smudged word
-                    if ra == digits and rb and len(rb) == len(digits) and rb != digits:
-                        out.append(Finding("text", "fine_print_changed", "critical", page_no,
-                                           f'Fine print differs (OCR): the reference says "{w[4]}" but the sample reads "{rb}" here '
-                                           f"({sp['size']:.1f} pt text on a low-resolution image)",
-                                           a_text=w[4], b_text=rb, bbox_a=list(w[:4]), bbox_b=list(w[:4]),
-                                           detail=dict(ocr_reference_degraded=ra, ocr_sample=rb, size=sp["size"]), confidence="medium"))
+                    if re.search(r"\d", w[4]):
+                        nums.append((w, sp, ln["dir"]))
+                    elif sp["size"] >= 5 and len(re.sub(r"[^\w]|\d|_", "", w[4])) >= 3:  # below 5 pt OCR misreads letters ("soflgels")
+                        words.append((w, sp, ln["dir"]))
+    # OCR is the slow step: check only the letter words whose pixels differ most from the reference
+    blur = lambda im: cv2.GaussianBlur(cv2.cvtColor(im, cv2.COLOR_RGB2GRAY), (0, 0), 1.5).astype(np.int16)
+    ga, gb = blur(img_a), blur(img_b)
+
+    def score(w):
+        x0, y0, x1, y1 = (max(0, int(v * k)) for v in w[:4])
+        ink = (ga[y0:y1, x0:x1] < 200) | (gb[y0:y1, x0:x1] < 200)
+        return float(np.abs(ga[y0:y1, x0:x1] - gb[y0:y1, x0:x1])[ink].mean()) if ink.any() else 0.0
+    words = sorted(words, key=lambda c: -score(c[0]))[:8]
+    out: list[Finding] = []
+    for w, sp, d in nums[:60] + words:
+        numeric = bool(re.search(r"\d", w[4]))
+        # numbers: compare the digits; words: compare the letters (case and punctuation are OCR noise)
+        key = (lambda t: re.sub(r"\D", "", t)) if numeric else (lambda t: re.sub(r"[^\w]|\d|_", "", unicodedata.normalize("NFKC", t)).casefold())
+        want = key(w[4])
+        if numeric:
+            r = _pad(list(w[:4]), 1.2)
+        else:
+            # a word needs little margin along the line (more pulls in the next word: "ate Da") and more across it,
+            # so the OCR can tell this line from its neighbours
+            along, across = 0.4, 2.0
+            px_, py_ = (along, across) if abs(d[0]) >= abs(d[1]) else (across, along)
+            r = [w[0] - px_, w[1] - py_, w[2] + px_, w[3] + py_]
+        x0, y0, x1, y1 = (max(0, int(v * k)) for v in r)
+        ca, cb = img_a[y0:y1, x0:x1], img_b[y0:y1, x0:x1]
+        if ca.size == 0 or cb.size == 0:
+            continue
+        sm = cv2.resize(ca, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)  # ~150 dpi, like the scan
+        deg = cv2.resize(sm, (ca.shape[1], ca.shape[0]), interpolation=cv2.INTER_LINEAR)
+        up = lambda im: cv2.resize(im, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+        ra = key(ocr.read(up(_upright(deg, d)), 0.3))
+        rb_raw = ocr.read(up(_upright(cb, d)), 0.3)
+        rb = key(rb_raw)
+        # same length: a changed character, not a partial read of a smudged word
+        if ra == want and rb and len(rb) == len(want) and rb != want and not numeric:
+            # a letter misread ("softgels" -> "soflgels") flips between zoom levels; a real edit reads the same
+            if key(ocr.read(cv2.resize(_upright(cb, d), None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC), 0.3)) != rb:
+                continue
+        if ra == want and rb and len(rb) == len(want) and rb != want:
+            out.append(Finding("text", "fine_print_changed", "critical" if numeric else "major", page_no,
+                               f'Fine print differs (OCR): the reference says "{w[4]}" but the sample reads "{rb if numeric else rb_raw}" here '
+                               f"({sp['size']:.1f} pt text on a low-resolution image)",
+                               a_text=w[4], b_text=rb, bbox_a=list(w[:4]), bbox_b=list(w[:4]),
+                               detail=dict(ocr_reference_degraded=ra, ocr_sample=rb, size=sp["size"]), confidence="medium"))
     return out
 
 
@@ -1021,6 +1092,25 @@ def _pair_noise(a: np.ndarray, b: np.ndarray, tile: int = 48) -> float:
     return float(np.percentile(vals, 75)) if vals.size else 0.0
 
 
+def _is_jpeg(page) -> bool:
+    """An image-only page whose picture is stored as JPEG (lossy colour), not PNG / Flate (lossless)."""
+    doc = page.parent
+    return any(doc.xref_get_key(im[0], "Filter")[1] in ("/DCTDecode", "/JPXDecode") for im in page.get_images(full=True))
+
+
+def _tile_level(val: np.ndarray, msk: np.ndarray, tile: int = 96) -> float:
+    """Typical high value of `val` over `msk`: the 99.5th percentile inside each tile, then the median across
+    tiles. Real changes would have to cover half the tiles to move it (a small label with 10 edits lifts many
+    tiles, which a high percentile across tiles mistook for noise), so this measures the noise of the copy."""
+    vals = []
+    for y in range(0, val.shape[0] - tile + 1, tile):
+        for x in range(0, val.shape[1] - tile + 1, tile):
+            m = msk[y:y + tile, x:x + tile]
+            if m.sum() > 50:
+                vals.append(np.percentile(val[y:y + tile, x:x + tile][m], 99.5))
+    return float(np.median(vals)) if len(vals) >= 8 else 0.0
+
+
 def _move_residual(ga, gb, box, m) -> tuple[float, int]:
     """After sliding the sample's copy back onto the reference, how much of the artwork still disagrees?
     A template score of 0.9 tolerates one changed digit in a short line, so 'it matches at the new
@@ -1061,6 +1151,17 @@ def _already_there(ga, box, m, cfg) -> bool:
     return (np.abs(tpl - there) > 60).sum() / max(1, int(ink.sum())) <= cfg.move_max_residual
 
 
+def _arrived(mask, box, m) -> bool:
+    """A real move changes the page twice: where the artwork left and where it arrived. If the destination shows
+    (almost) no change, the same artwork was already there - e.g. "Clavulanate" on the next line - and the
+    source change is an edit, not a move."""
+    x0, y0, x1, y1 = box
+    src = int(mask[y0:y1, x0:x1].sum())
+    dx0, dy0 = max(0, x0 + m[1]), max(0, y0 + m[2])
+    dst = int(mask[dy0:max(dy0, y1 + m[2]), dx0:max(dx0, x1 + m[1])].sum())
+    return dst >= 0.25 * src
+
+
 def _clean_move(res: tuple[float, int], cfg: Config) -> bool:
     ratio, n = res
     return ratio <= cfg.move_max_residual and not (n > 12 and ratio > 0.015)
@@ -1077,11 +1178,13 @@ def _styles(page, rect_pt, k: float = 1.0):
     return out
 
 
-def compare_visual(img_a, img_b, pa, pb, page_no, explained_pt, cfg, raster, noise=None, Hinv=None, size_k: float = 1.0, registered=False) -> tuple[list[Finding], np.ndarray, dict]:
+def compare_visual(img_a, img_b, pa, pb, page_no, explained_pt, cfg, raster, noise=None, Hinv=None, size_k: float = 1.0, registered=False,
+                   jpeg=False) -> tuple[list[Finding], np.ndarray, dict]:
     k = cfg.dpi / 72
     text_page = pa if pa.get_text("words") else (pb if pb.get_text("words") else None)
     a, b = _canvas(img_a, img_b)
     de_raw = lab_dist(a, b)
+    thr = None
     if noise is None:
         noise = _pair_noise(a, b) if raster else 0.0
     # same pixel grid, not merely similar - a registered page was resampled by a sub-pixel offset, so never 'aligned'
@@ -1108,7 +1211,28 @@ def compare_visual(img_a, img_b, pa, pb, page_no, explained_pt, cfg, raster, noi
         mean = cv2.blur(gray, (win, win))
         local_var = cv2.blur(gray * gray, (win, win)) - mean * mean
         flat = local_var < cfg.raster_flat_var
-        mask = np.where(flat, de_raw > cfg.raster_delta_e_tight, de_blur > cfg.raster_delta_e).astype(np.uint8)
+        # how noisy is THIS copy? JPEG, another dpi or a sub-pixel shift leave a halo on every edge (ΔE ~15-20 on
+        # a 200 dpi or shifted copy) and speckle in flat colour (ΔE ~8 raw on a 300 dpi JPEG); a fixed threshold
+        # flags hundreds of those. Measure the typical level tile by tile - an edit touches a few tiles, the noise
+        # touches all of them - and only raise the thresholds above the defaults when the copy is that noisy.
+        # Real edits sit far above (ΔE 38-90 for a changed digit at the same blur).
+        # Clean copies peak at 3-4.5x the median tile level; the rise is capped so that no amount of noise (or of real
+        # change mistaken for noise) can switch the check off: real edits measure 38-90 at the edge, 5+ in flat colour.
+        ink = gray < 230
+        edge_thr = min(max(cfg.raster_delta_e, 4.2 * _tile_level(de_blur, ~flat & ink)), 1.5 * cfg.raster_delta_e)
+        if jpeg:
+            # a JPEG copy keeps white paper exact but shifts saturated colour by up to ΔE ~8 (chroma subsampling and
+            # block quantisation), so measure it on the coloured flat areas. Only done when the file really is a
+            # JPEG: from pixels alone that shift can't be told from a genuine subtle recolour, which a lossless copy
+            # still catches at ΔE 4.
+            paper = (a.min(axis=2) > 235) & (b.min(axis=2) > 235)
+            flat_thr = min(max(cfg.raster_delta_e_tight, 4.2 * _tile_level(de_blur, flat & ~paper)), 2.5 * cfg.raster_delta_e_tight)
+        else:
+            flat_thr = min(max(cfg.raster_delta_e_tight, 4.2 * _tile_level(de_blur, flat)), 2 * cfg.raster_delta_e_tight)
+        # in flat colour a real recolour is uniform, so it shows both pixel by pixel and after the blur; JPEG
+        # block speckle is pixel-level only and averages away
+        mask = np.where(flat, (de_raw > flat_thr) & (de_blur > flat_thr), de_blur > edge_thr).astype(np.uint8)
+        thr = dict(edge=round(edge_thr, 1), flat=round(flat_thr, 1))
         de = de_raw
     else:
         de = de_raw
@@ -1151,7 +1275,7 @@ def compare_visual(img_a, img_b, pa, pb, page_no, explained_pt, cfg, raster, noi
     moves, consumed, handled = [], [], set()
     for bx in todo:
         m = _find_shift(ga, gb, bx, search)
-        if m and m[0] >= 0.9 and math.hypot(m[1], m[2]) / k / MM > cfg.move_tol_mm and _clean_move(_move_residual(ga, gb, bx, m), cfg) and not _already_there(ga, bx, m, cfg):
+        if m and m[0] >= 0.9 and math.hypot(m[1], m[2]) / k / MM > cfg.move_tol_mm and _clean_move(_move_residual(ga, gb, bx, m), cfg) and not _already_there(ga, bx, m, cfg) and _arrived(mask, bx, m):
             moves.append((bx, m)); consumed.append(m[3]); handled.add(bx)
     for bx in todo:
         if bx in handled:
@@ -1159,6 +1283,52 @@ def compare_visual(img_a, img_b, pa, pb, page_no, explained_pt, cfg, raster, noi
         ar = _area(bx)
         if any(_inter(bx, c) / ar >= 0.5 for c in consumed):
             handled.add(bx)
+
+    # image-only side: one edited word ("500" → "600") usually leaves several separate pixel regions, and a crop
+    # around each cuts through the word ("50 n" vs "00 n"). Snap each region to the live-text words it changes
+    # and merge regions that share a word, so a change is read - and reported - once, as whole words.
+    words_of: dict[tuple, list] = {}
+    if raster and text_page is not None:
+        Hb = np.linalg.inv(Hinv) if (Hinv is not None and text_page is pb) else None
+        dirs = _line_dirs(text_page)
+        W = []
+        for w in text_page.get_text("words"):
+            r = align.map_rect(Hb, list(w[:4])) if Hb is not None else list(w[:4])
+            W.append(dict(px=[int(r[0] * k), int(r[1] * k), int(math.ceil(r[2] * k)), int(math.ceil(r[3] * k))],
+                          text=w[4], key=tuple(w[5:8]), dir=_dir_at(dirs, w[:4])))
+        by_key = {w["key"]: i for i, w in enumerate(W)}
+        hits = {}
+        for bx in todo:
+            if bx in handled:
+                continue
+            hs = set()
+            for i, w in enumerate(W):
+                x0, y0 = max(bx[0], w["px"][0]), max(bx[1], w["px"][1])
+                x1, y1 = min(bx[2], w["px"][2]), min(bx[3], w["px"][3])
+                if x1 > x0 and y1 > y0 and int(mask[y0:y1, x0:x1].sum()) >= cfg.min_area_px:
+                    hs.add(i)
+            if hs:
+                hits[bx] = hs
+        groups_w: list[list] = []  # [boxes, word indices]; regions sharing a word are one change
+        for bx, hs in hits.items():
+            joined = [g for g in groups_w if g[1] & hs]
+            for g in joined:
+                groups_w.remove(g)
+            groups_w.append([[bx] + [b for g in joined for b in g[0]], hs.union(*(g[1] for g in joined))])
+        snapped = []
+        for bxs, hs in groups_w:
+            wset = set(hs)
+            for i in hs:  # keep the unit with its number: "500 mg", not "500"
+                blk, ln_, wn = W[i]["key"]
+                j = by_key.get((blk, ln_, wn + 1))
+                if j is not None and re.search(r"\d$", W[i]["text"]) and UNITS.match(re.split(r"[/(]", W[j]["text"])[0]):
+                    wset.add(j)
+            ws = sorted((W[i] for i in wset), key=lambda w: w["key"])
+            merged = tuple(int(v) for v in _union([list(o) for o in bxs] + [w["px"] for w in ws]))
+            merged = (max(0, merged[0]), max(0, merged[1]), min(a.shape[1], merged[2]), min(a.shape[0], merged[3]))
+            snapped.append(merged)
+            words_of[merged] = ws
+        todo = sorted([bx for bx in todo if bx not in hits] + snapped, key=lambda t: (t[1], t[0]))
 
     out: list[Finding] = []
     to_pt = lambda bx: [v / k for v in bx]
@@ -1182,7 +1352,8 @@ def compare_visual(img_a, img_b, pa, pb, page_no, explained_pt, cfg, raster, noi
                            bbox_a=_union([to_pt(b) for b in g["boxes"]]), bbox_b=_union([to_pt(d) for d in g["dests"]]),
                            detail=dict(dx_mm=g["dx"], dy_mm=g["dy"], match=float(g["score"]), elements=n_el)))
 
-    stats_out = dict(regions=len(todo), noise=noise, aligned=aligned, ocr_regions=0, ocr_available=bool(cfg.ocr and ocr.available()))
+    stats_out = dict(regions=len(todo), noise=noise, aligned=aligned, ocr_regions=0, ocr_available=bool(cfg.ocr and ocr.available()),
+                     thresholds=thr)
     for bx in todo:
         if bx in handled:
             continue
@@ -1215,10 +1386,14 @@ def compare_visual(img_a, img_b, pa, pb, page_no, explained_pt, cfg, raster, noi
         else:
             kind, msg = "changed", "Visual content differs (text/graphics not explained by a text or barcode change)"
         msg, sev, ref_txt = f"{msg} ({area_mm2:.1f} mm²)", ("minor" if area_mm2 < 2.0 else "major"), ""
+        ws = words_of.get(bx)
         if raster and text_page is not None:
             # one file is image-only: show what the live-text file says here, and treat digits as critical
-            clip = align.map_rect(Hinv, rect) if (Hinv is not None and text_page is pb) else rect
-            ref_txt = " ".join(w[4] for w in text_page.get_text("words", clip=pymupdf.Rect(*clip)))
+            if ws:
+                ref_txt = " ".join(w["text"] for w in ws)
+            else:
+                clip = align.map_rect(Hinv, rect) if (Hinv is not None and text_page is pb) else rect
+                ref_txt = " ".join(w[4] for w in text_page.get_text("words", clip=pymupdf.Rect(*clip)))
             if ref_txt:
                 msg += f'; live text in the {"reference" if text_page is pa else "sample"} at this spot: "{ref_txt}"'
                 if re.search(r"\d", ref_txt):
@@ -1228,13 +1403,36 @@ def compare_visual(img_a, img_b, pa, pb, page_no, explained_pt, cfg, raster, noi
         if stats_out["ocr_available"] and stats_out["ocr_regions"] < cfg.ocr_max_regions:
             # what does each side actually SAY in this spot? Read with OCR (never a language model) and let
             # a changed digit raise the severity: a pixel diff alone can't tell a stray mark from a wrong dose.
-            pad, padx = int(1.5 * MM * k), int(4 * MM * k)  # wider sideways so a unit next to a number is read too
-            px0, py0, px1, py1 = max(0, x0 - padx), max(0, y0 - pad), min(a.shape[1], x1 + padx), min(a.shape[0], y1 + pad)
-            oa, ob = ocr.read(a[py0:py1, px0:px1]), ocr.read(b[py0:py1, px0:px1])
+            if ws:
+                # read exactly the changed words (plus a hair of margin), turned upright the same way on both sides
+                p = int(0.5 * MM * k)
+                u = _union([w["px"] for w in ws])
+                px0, py0, px1, py1 = max(0, int(u[0]) - p), max(0, int(u[1]) - p), min(a.shape[1], int(u[2]) + p), min(a.shape[0], int(u[3]) + p)
+                d = ws[0]["dir"]
+                one_line = len({w["key"][:2] for w in ws}) == 1
+                # the OCR model reads text ~32-40 px tall best (tested on this carton: brand lettering at 160 px
+                # comes back as fragments, "25°C." at 80 px as "25 o C."), so size every word to 40 px
+                tall = max((w["px"][3] - w["px"][1]) if abs(d[0]) >= abs(d[1]) else (w["px"][2] - w["px"][0]) for w in ws)
+                f = 40 / max(1, tall)
+                fit = lambda c: cv2.resize(c, None, fx=f, fy=f, interpolation=cv2.INTER_AREA if f < 1 else cv2.INTER_CUBIC)
+                oa, ob = (ocr.read(fit(_upright(im[py0:py1, px0:px1], d)), by_x=one_line, upscale=False) for im in (a, b))
+            else:
+                pad, padx = int(1.5 * MM * k), int(4 * MM * k)  # wider sideways so a unit next to a number is read too
+                px0, py0, px1, py1 = max(0, x0 - padx), max(0, y0 - pad), min(a.shape[1], x1 + padx), min(a.shape[0], y1 + pad)
+                oa, ob = ocr.read(a[py0:py1, px0:px1]), ocr.read(b[py0:py1, px0:px1])
             stats_out["ocr_regions"] += 1
             det.update(ocr_a=oa, ocr_b=ob)
-            squash = lambda t: re.sub(r"\s+", "", t).casefold()
-            if squash(oa) != squash(ob):
+            img_read = ob if text_page is pa else oa
+            same = lambda t: re.sub(r"\s+", "", unicodedata.normalize("NFKC", t))  # case counts: "mg" -> "MG" is a change
+            if ws and same(img_read) == same(ref_txt):
+                # the image copy reads exactly like the live words: the text is right, only pixels differ there
+                # (JPEG halo on white-on-colour lettering, a heavier render) - worth a glance, not a wrong dose
+                msg = (f'Visual difference on text that reads the same in both files ("{ref_txt}") - most likely image '
+                       f"compression or rendering; check by eye ({area_mm2:.1f} mm²)")
+                sev = "minor"
+            elif _squash(oa) != _squash(ob):
+                if ws:  # the live side's words are exact; only the image side needs OCR
+                    oa, ob = (ref_txt, _ocr_as_live(ref_txt, oa, ob)) if text_page is pa else (_ocr_as_live(ref_txt, ob, oa), ref_txt)
                 # lead with what the text actually says; the pixel measurements stay in the explanation
                 msg = f'Text reads differently (OCR): "{oa}" in the reference vs "{ob}" in the sample ({area_mm2:.1f} mm²)'
                 a_txt, b_txt = oa, ob
@@ -1406,9 +1604,19 @@ def _inks(page) -> tuple[set, dict]:
     return spots, op
 
 
-def compare_inks(pa, pb, page_no) -> list[Finding]:
+def compare_inks(pa, pb, page_no, flat_a=False, flat_b=False) -> list[Finding]:
     (sa, oa), (sb, ob) = _inks(pa), _inks(pb)
     out: list[Finding] = []
+    # an image-only (flattened) file has no spot inks or overprint at all, so every ink on the other side would be
+    # reported "removed" / "added": one finding per ink, all saying the file was flattened. Say that once instead.
+    for flat, side, other, spots, op in ((flat_b, "sample", "reference", sa - sb, oa), (flat_a, "reference", "sample", sb - sa, ob)):
+        if flat and not (sb if flat_b else sa) and (spots or op["on"]):
+            what = ([f"spot colour{'s' if len(spots) > 1 else ''} {', '.join(sorted(spots))}"] if spots else []) + (["overprint"] if op["on"] else [])
+            out.append(Finding("info", "inks_flattened", "info", page_no,
+                               f"The {side} is a flattened image, so the {other}'s {' and '.join(what)} can't be checked "
+                               f"(a flattened file has no separate inks). Request the live artwork file if press inks matter.",
+                               detail=dict(spots_a=sorted(sa), spots_b=sorted(sb), op_a=oa, op_b=ob)))
+            return out
     gone, new = sorted(sa - sb), sorted(sb - sa)
     if len(gone) == 1 and len(new) == 1:
         out.append(Finding("color", "spot_replaced", "major", page_no, f"Spot colour {gone[0]} was replaced by {new[0]} (a different ink on press)",
@@ -1519,6 +1727,38 @@ def _merge_confirmations(findings: list[Finding]) -> list[Finding]:
                 continue
         keep.append(f)
     return keep
+
+
+def _group_repeats(findings: list[Finding]) -> list[Finding]:
+    """The same edit printed in several places on a page ("500 mg" -> "600 mg" on the front, the side and the back
+    panel) is one change to check, not three: keep one finding, raise it to the most serious of them, and keep every
+    spot in detail["also_at"] so each one is still boxed on the page."""
+    out, first = [], {}
+    for f in findings:
+        if f.category not in ("text", "graphic") or not (f.a_text and f.b_text) or not (f.bbox_a or f.bbox_b):
+            out.append(f)
+            continue
+        # group on the words that changed, not their neighbours: "500 mg/125" and "500 mg" are both 500 -> 600
+        ta, tb = f.a_text.split(), f.b_text.split()
+        while len(ta) > 1 and len(tb) > 1 and _squash(ta[-1]) == _squash(tb[-1]):
+            ta, tb = ta[:-1], tb[:-1]
+        while len(ta) > 1 and len(tb) > 1 and _squash(ta[0]) == _squash(tb[0]):
+            ta, tb = ta[1:], tb[1:]
+        key = (f.page, f.kind, _squash(" ".join(ta)), _squash(" ".join(tb)))
+        g = first.get(key)
+        if g is None:
+            first[key] = f
+            out.append(f)
+            continue
+        g.detail.setdefault("also_at", []).append(f.bbox_b or f.bbox_a)
+        if SEV_RANK[f.severity] > SEV_RANK[g.severity]:
+            g.severity = f.severity
+        if f.confidence == "high":
+            g.confidence = "high"
+    for g in first.values():
+        if g.detail.get("also_at"):
+            g.message += f" - same change in {len(g.detail['also_at']) + 1} places on this page"
+    return out
 
 
 def _spelling(A, B, pairs, findings, deck_paras, coverage, page_H=None) -> list[Finding]:
@@ -1675,7 +1915,7 @@ def compare(path_a: str, path_b: str, cfg: Config | None = None, keep_images: bo
         # a flattened page has no OCG/layer structure at all - "layer removed" would be uninformative
         # noise there, exactly like text and braille
         layer_f = [] if raster else compare_layers(A, B, pa, pb, p)
-        struct_f = compare_structure(pa, pb, p, cfg, raster, H) + compare_inks(pa, pb, p)
+        struct_f = compare_structure(pa, pb, p, cfg, raster, H) + compare_inks(pa, pb, p, flat_a=not has_a and has_b, flat_b=not has_b and has_a)
         sep_f = [] if raster else compare_separations(pa, pb, p, cfg, H)
         if H is not None:  # everything read from the sample page itself is reported in the reference's frame
             for f in text_f + brl_f + layer_f:
@@ -1731,7 +1971,8 @@ def compare(path_a: str, path_b: str, cfg: Config | None = None, keep_images: bo
             explained += [f.bbox_a for f in fp_f]
         vcfg = dataclasses.replace(cfg, raster_blur=cfg.raster_blur * 2, raster_delta_e=cfg.raster_delta_e * 1.6,
                                    raster_delta_e_tight=cfg.raster_delta_e_tight * 3, min_area_px=cfg.min_area_px * 40) if photo else cfg
-        vis_f, mask, vstats = compare_visual(img_a, img_b, pa, pb, p, explained, vcfg, vraster, noise, Hinv, k_size, registered=T is not None)
+        jpeg = (not has_a and _is_jpeg(pa)) or (not has_b and _is_jpeg(pb))
+        vis_f, mask, vstats = compare_visual(img_a, img_b, pa, pb, p, explained, vcfg, vraster, noise, Hinv, k_size, registered=T is not None, jpeg=jpeg)
         if photo:
             for f in [f for f in code_f if f.kind in ("missing", "low_contrast", "low_reflectance", "quiet_zone_violation")]:
                 code_f.remove(f)
@@ -1770,7 +2011,9 @@ def compare(path_a: str, path_b: str, cfg: Config | None = None, keep_images: bo
             dict(name="Ink separations", status="skipped" if raster else "ran",
                  note=f"skipped: {why}" if raster else f"C, M, Y and K plates compared at {cfg.separation_dpi} dpi"),
             dict(name="Page structure", status="ran", note="trim/bleed boxes, rotation, fonts, image resolution"),
-            dict(name="Visual", status="ran", note=((f"{cfg.dpi} dpi CIE-Lab, pixel-aligned copy: full sensitivity" if vstats["aligned"] else f"{cfg.dpi} dpi CIE-Lab, resampled copy (noise {vstats['noise']:.0f}): tolerant, fine print may be missed") if raster else f"{cfg.dpi} dpi CIE-Lab") + f", {vstats['regions']} changed regions"),
+            dict(name="Visual", status="ran", note=((f"{cfg.dpi} dpi CIE-Lab, pixel-aligned copy: full sensitivity" if vstats["aligned"] else f"{cfg.dpi} dpi CIE-Lab, resampled copy (noise {vstats['noise']:.0f}): tolerant, fine print may be missed") if raster else f"{cfg.dpi} dpi CIE-Lab") + f", {vstats['regions']} changed regions"
+                 + (f"; JPEG copy: colour shifts below ΔE {vstats['thresholds']['flat']:.0f} in coloured areas can't be checked"
+                    if jpeg and vstats.get("thresholds") and vstats["thresholds"]["flat"] > cfg.raster_delta_e_tight else "")),
             dict(name="OCR", status="ran" if ocr_on else "skipped",
                  note=(f"read {vstats['ocr_regions']} changed regions" if ocr_on else "engine not installed or disabled")),
         ]
@@ -1823,6 +2066,7 @@ def compare(path_a: str, path_b: str, cfg: Config | None = None, keep_images: bo
                          note=f"{ds['matched']} of {ds['paragraphs']} approved paragraphs located on the sample" + (" (read by OCR)" if ds["ocr"] else ""))
     findings += _spelling(A, B, pairs, findings, deck_paras, coverage, page_H)
     findings = _merge_confirmations(findings)
+    findings = _group_repeats(findings)
     if settings:
         from . import profiles
         findings = profiles.apply(findings, settings)

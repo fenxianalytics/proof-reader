@@ -15,3 +15,6 @@ results/
 samples/
 real/*.pdf
 language_tests/
+
+# client artwork - never commit
+customer_samples/
